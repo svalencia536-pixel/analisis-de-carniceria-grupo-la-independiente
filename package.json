@@ -1,0 +1,12 @@
+{
+  "name": "porcionamiento-la-independiente",
+  "version": "1.0.0",
+  "description": "Aplicativo de control de porcionamiento de proteinas del Grupo La Independiente",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
