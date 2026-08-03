@@ -6,7 +6,7 @@
 <title>Análisis de Porcionamiento · Grupo La Independiente</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.mini.min.js"></script>
 <style>
   :root{
     --rojo:#B01B2E;--rojo-osc:#7d1220;--verde:#1e8a4c;--amar:#d9a300;--alert:#c62828;
@@ -90,6 +90,18 @@
   .tag-auto{font-size:9px;background:var(--verde);color:#fff;padding:1px 6px;border-radius:10px;margin-left:6px}
   .tag-man{font-size:9px;background:var(--amar);color:#fff;padding:1px 6px;border-radius:10px;margin-left:6px}
 
+  /* ===== Cómo usar ===== */
+  .paso{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start;padding:11px 0;border-top:1px solid var(--linea)}
+  .paso:first-of-type{border-top:none;padding-top:2px}
+  .paso .num{background:var(--rojo);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .paso h3{font-size:14px;margin-bottom:3px}
+  .paso p{font-size:13.5px;color:var(--gris);line-height:1.5}
+  .paso p b{color:var(--txt)}
+  .formula{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--linea);font-size:13.5px}
+  .formula:first-of-type{border-top:none}
+  .formula span:last-child{color:var(--gris);text-align:right}
+  .aviso{background:var(--amarbg);border:1px solid var(--amar);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.5}
+
   /* ===== Impresión: pestaña Nuevo análisis en una sola hoja A4 ===== */
   @media print{
     @page{size:A4 portrait;margin:8mm}
@@ -133,6 +145,7 @@
   <button onclick="tab('panel',this)">📊 Panel</button>
   <button onclick="tab('config',this)">⚙️ Configuración</button>
   <button onclick="tab('exportar',this)">📤 Exportar</button>
+  <button onclick="tab('ayuda',this)">❓ Cómo usar</button>
 </nav>
 </aside>
 
@@ -374,6 +387,92 @@
     </div>
     <button class="btn gris" onclick="abrirCorreo()">✉️ Enviar reporte por correo</button>
     <p class="mini" style="margin-top:8px">El correo arma el mensaje con el resumen y abre tu app de correo. Adjunta manualmente el PDF/Excel descargado.</p>
+  </div>
+</div>
+
+<!-- ========= CÓMO USAR ========= -->
+<div id="ayuda" class="tab">
+  <div class="card">
+    <h2>❓ Cómo hacer un análisis de porcionamiento</h2>
+    <p class="mini" style="margin-bottom:12px">Un análisis mide cuánto producto útil salió de la proteína que llegó y cuánto costó lo que se perdió. Sigue estos pasos en la pestaña <b>Nuevo análisis</b>.</p>
+
+    <div class="paso"><div class="num">1</div><div>
+      <h3>Llena el encabezado</h3>
+      <p>Fecha, restaurante y quién elabora. El <b>consecutivo</b> se asigna solo, no se escribe. Registra el <b>proveedor</b>, el <b># de factura</b>, el <b>precio por kilo</b> y los <b>kilos</b> que llegaron: con eso el aplicativo calcula la cantidad inicial en gramos y el valor de la factura.</p>
+    </div></div>
+
+    <div class="paso"><div class="num">2</div><div>
+      <h3>Elige la proteína</h3>
+      <p>Al seleccionarla se cargan sus cortes típicos marcados <span class="tag-auto">auto</span>. Si porcionaste un corte que no está en la lista, usa las filas <span class="tag-man">manual</span> o el botón <b>Agregar corte manual</b>.</p>
+    </div></div>
+
+    <div class="paso"><div class="num">3</div><div>
+      <h3>Registra la cantidad porcionada</h3>
+      <p>En cada corte escribe <b>cuántas porciones</b> salieron, no los gramos. El aplicativo multiplica por el peso del corte. Los cortes con <b>peso 1 g</b> (recortes, insumo para sushi o cevichería) sí van en gramos sueltos: ahí escribe el gramaje total.</p>
+    </div></div>
+
+    <div class="paso"><div class="num">4</div><div>
+      <h3>Anota las pérdidas</h3>
+      <p>Pesa y registra la <b>merma de líquidos</b> y el <b>desperdicio</b> (hueso, pellejo, gordo). La <b>diferencia no identificada</b> se calcula sola: es lo que entró menos lo porcionado menos lo que ya justificaste. Si sale alta, faltó pesar algo.</p>
+    </div></div>
+
+    <div class="paso"><div class="num">5</div><div>
+      <h3>Revisa la conciliación</h3>
+      <p>Compara los gramos que entraron contra los que quedaron explicados. En <span style="color:var(--verde);font-weight:700">verde</span> el descuadre es menor al 2%; en <span style="color:var(--amar);font-weight:700">amarillo</span> se pasó y hay que revisar el pesaje antes de guardar.</p>
+    </div></div>
+
+    <div class="paso"><div class="num">6</div><div>
+      <h3>Guarda en el consolidado</h3>
+      <p>Verifica el rendimiento y el valor de la pérdida, y presiona <b>Guardar en consolidado</b>. El formulario se limpia y queda listo para el siguiente. Antes de guardar puedes <b>descargar el PDF</b> de una hoja o <b>compartirlo</b>.</p>
+    </div></div>
+  </div>
+
+  <div class="card">
+    <h2>🧮 Cómo se calcula cada cifra</h2>
+    <div class="res-box">
+      <div class="formula"><span>Cantidad inicial</span><span>kilos × 1.000</span></div>
+      <div class="formula"><span>Valor factura</span><span>precio por kilo × kilos</span></div>
+      <div class="formula"><span>Costo por gramo</span><span>valor factura ÷ gramos porcionados</span></div>
+      <div class="formula"><span>Subtotal productivo</span><span>gramos porcionados × costo por gramo</span></div>
+      <div class="formula"><span>Dif. no identificada</span><span>inicial − porcionado − merma − desperdicio</span></div>
+      <div class="formula"><span>Total pérdida</span><span>merma + desperdicio + dif. no identificada</span></div>
+      <div class="formula"><span>Valor de la pérdida</span><span>pérdida en gramos × costo por gramo</span></div>
+      <div class="formula"><span>Rendimiento</span><span>gramos porcionados ÷ cantidad inicial</span></div>
+    </div>
+    <p class="mini" style="margin-top:8px">Toda la factura se reparte entre el producto que sí quedó útil. Por eso, mientras más se pierda, más caro cuesta cada gramo aprovechado.</p>
+  </div>
+
+  <div class="card">
+    <h2>🚦 Qué significa el semáforo</h2>
+    <p class="mini" style="margin-bottom:10px">El estado compara el rendimiento contra el mínimo definido en la pestaña <b>Estándares</b> para ese producto.</p>
+    <div class="res-box">
+      <div class="res-row"><span class="pill v">OK</span><span>Rinde igual o más que el mínimo.</span></div>
+      <div class="res-row"><span class="pill a">Al límite</span><span>Hasta 3 puntos por debajo. Revisar.</span></div>
+      <div class="res-row"><span class="pill r">Bajo estándar</span><span>Más de 3 puntos por debajo. Exige explicación.</span></div>
+      <div class="res-row"><span class="pill v">Sin estándar</span><span>Ese producto aún no tiene mínimo definido.</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📂 Para qué sirve cada pestaña</h2>
+    <div class="res-box">
+      <div class="res-row"><span><b>🥩 Nuevo análisis</b></span><span>Registrar un porcionamiento.</span></div>
+      <div class="res-row"><span><b>📒 Consolidado</b></span><span>Todo lo guardado, con filtros y totales.</span></div>
+      <div class="res-row"><span><b>📏 Estándares</b></span><span>Pérdida aceptable por producto.</span></div>
+      <div class="res-row"><span><b>🧩 Matriz cortes</b></span><span>Catálogo de cortes y sus pesos.</span></div>
+      <div class="res-row"><span><b>📊 Panel</b></span><span>Indicadores y productos más críticos.</span></div>
+      <div class="res-row"><span><b>⚙️ Configuración</b></span><span>Personal, proveedores y restaurantes.</span></div>
+      <div class="res-row"><span><b>📤 Exportar</b></span><span>PDF, Excel y envío por correo.</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💾 Dónde quedan los datos</h2>
+    <div class="aviso">
+      Los análisis se guardan <b>en este equipo y en este navegador</b>. No se comparten entre computadores ni entre restaurantes, y se pierden si borras los datos de navegación.
+      <br><br>
+      Por eso, al cerrar cada período <b>descarga el Excel</b> desde la pestaña Exportar y guárdalo en la carpeta del grupo. Ese archivo es el respaldo.
+    </div>
   </div>
 </div>
 

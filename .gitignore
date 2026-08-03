@@ -16,3 +16,6 @@ desktop.ini
 # Node (por si luego se agrega tooling)
 node_modules/
 npm-debug.log*
+
+# Generado por 'construir publicacion.py'
+publicacion/
