@@ -161,11 +161,6 @@
 
 <!-- ========= NUEVO ANALISIS ========= -->
 <div id="analisis" class="tab active">
-  <div id="a_analisis-actions" class="card no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <button class="btn" style="width:auto;margin:0;flex:1;min-width:160px" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
-    <button class="btn sec" style="width:auto;margin:0;flex:1;min-width:160px" onclick="descargarPDFanalisis()">📄 Descargar PDF</button>
-    <button class="btn gris" style="width:auto;margin:0;flex:1;min-width:160px" onclick="compartirAnalisis()">📤 Compartir</button>
-  </div>
   <div class="card">
     <h2>🥩 Encabezado del análisis</h2>
     <div class="grid4">
@@ -237,6 +232,12 @@
       <div class="res-row"><span>Estado vs. estándar</span><span id="r_estado"></span></div>
     </div>
     <button class="btn" onclick="guardarAnalisis()">💾 Guardar en consolidado</button>
+  </div>
+
+  <div id="a_analisis-actions" class="card no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="btn" style="width:auto;margin:0;flex:1;min-width:160px" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn sec" style="width:auto;margin:0;flex:1;min-width:160px" onclick="descargarPDFanalisis()">📄 Descargar PDF</button>
+    <button class="btn gris" style="width:auto;margin:0;flex:1;min-width:160px" onclick="compartirAnalisis()">📤 Compartir</button>
   </div>
 </div>
 
