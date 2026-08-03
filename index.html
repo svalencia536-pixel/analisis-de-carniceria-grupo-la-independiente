@@ -1028,15 +1028,18 @@ function analisisActualPDF(doc){
                   2:{cellWidth:38,halign:'right'},3:{cellWidth:38,halign:'right'}}});
 
   // ── Lo que salió porcionado ─────────────────────────────────────────────
-  const cortes=filas.filter(f=>f.nombre).map(f=>{
+  // Solo los cortes que de verdad se porcionaron; los de cantidad 0 ensucian.
+  const cortes=filas.filter(f=>f.nombre&&(parseFloat(f.cant)||0)>0).map(f=>{
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
     return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt(cpg*peso),fmt(cpg*peso*cant)];
   });
+  // Renglones en blanco para anotar a mano, como en la planilla.
+  while(cortes.length<6) cortes.push(['','','','','','']);
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
     styles:{...base.styles,fontSize:7.5},
     head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL']],
     headStyles:cabecera,
-    body:cortes.length?cortes:[['—','','','','','']],
+    body:cortes,
     foot:[['','','TOTALES',ng(prod),'',fmt(prod*cpg)]],
     footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
                 lineColor:[190,190,195],lineWidth:.1},
