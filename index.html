@@ -947,56 +947,110 @@ function lanzarCorreo(){
 }
 
 /* ===== PDF del análisis actual (una sola hoja) ===== */
+/* Replica en PDF la planilla de Excel que ya usa el grupo: mismo orden de
+   bloques, mismos rótulos y los dos totales resaltados igual que allá. */
 function analisisActualPDF(doc){
+  const M=10;                                  // margen izquierdo
+  const ROJO=[176,27,46], GRIS=[238,239,242];
   const prot=$('a_prot').value||'—';
   const gIni=gramosIniciales(), prod=gramosPorcionados();
   const merma=parseFloat($('a_merma').value)||0, desp=parseFloat($('a_desp').value)||0;
   const difid=Math.max(gIni-prod-merma-desp,0), perdida=merma+desp+difid;
-  const rend=gIni>0?prod/gIni*100:0, cpg=costoPorGramo();
-  // Encabezado
-  doc.setFillColor(176,27,46);doc.rect(0,0,210,20,'F');
-  doc.setTextColor(255);doc.setFontSize(13);doc.text('GRUPO LA INDEPENDIENTE',105,9,{align:'center'});
-  doc.setFontSize(9);doc.text('Análisis de Porcionamiento de Proteínas',105,15,{align:'center'});
-  doc.setTextColor(30);doc.setFontSize(9);
-  let y=27;
-  const enc=[
-    ['Fecha',$('a_fecha').value||'—','Folio',$('a_folio').value||'—'],
-    ['Restaurante',$('a_rest').value||'—','Elaboró',$('a_elab').value||'—'],
-    ['Proveedor',$('a_prov').value||'—','Factura',$('a_fact').value||'—'],
-    ['Proteína',prot,'Precio/kl',fmt($('a_precio').value||0)],
-    ['Kilos',($('a_kl').value||0)+' kg','Cant. inicial',g(gIni)]
-  ];
-  doc.autoTable({startY:y,body:enc,theme:'plain',styles:{fontSize:9,cellPadding:1.5},
-    columnStyles:{0:{fontStyle:'bold',cellWidth:28},1:{cellWidth:60},2:{fontStyle:'bold',cellWidth:28},3:{cellWidth:60}}});
-  y=doc.lastAutoTable.finalY+4;
-  // Matriz de cortes
-  doc.setFontSize(10);doc.setTextColor(176,27,46);doc.text('Matriz de cortes',14,y);y+=2;
-  const cuerpo=filas.filter(f=>f.nombre).map(f=>{
-    const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);
-    return [f.nombre,(f.peso||0)+' g',f.cant||0,g(gr),fmt(cpg*(parseFloat(f.peso)||0)),fmt(cpg*gr)];
+  const rend=gIni>0?prod/gIni*100:0, pperd=gIni>0?perdida/gIni*100:0;
+  const cpg=costoPorGramo();
+  const precio=parseFloat($('a_precio').value)||0, kl=parseFloat($('a_kl').value)||0;
+  const ng=n=>Math.round(Number(n)||0).toLocaleString('es-CO');   // gramos, sin sufijo
+  const base={styles:{fontSize:8,cellPadding:1.6,lineColor:[190,190,195],lineWidth:.1,
+                      textColor:[30,30,30]},
+              theme:'grid',margin:{left:M,right:M}};
+  const rotulo={fontStyle:'bold',fillColor:GRIS};
+  const cabecera={fillColor:ROJO,textColor:255,fontStyle:'bold',fontSize:7.5,
+                  halign:'center',lineColor:[190,190,195],lineWidth:.1};
+
+  // ── Encabezado ──────────────────────────────────────────────────────────
+  doc.setFillColor(...ROJO);doc.rect(0,0,210,19,'F');
+  doc.setTextColor(255);doc.setFontSize(13);doc.setFont(undefined,'bold');
+  doc.text('ANÁLISIS DE PORCIONAMIENTO DE PROTEÍNAS',105,9,{align:'center'});
+  doc.setFontSize(8.5);doc.setFont(undefined,'normal');
+  doc.text('Grupo La Independiente',105,15,{align:'center'});
+  doc.setTextColor(30);
+
+  // ── Identificación ──────────────────────────────────────────────────────
+  doc.autoTable({...base,startY:24,
+    body:[['FECHA',$('a_fecha').value||'—','ANÁLISIS #',$('a_folio').value||'—'],
+          ['RESTAURANTE',$('a_rest').value||'—','ELABORADO POR',$('a_elab').value||'—'],
+          ['PROVEEDOR',$('a_prov').value||'—','FACTURA #',$('a_fact').value||'—']],
+    columnStyles:{0:{...rotulo,cellWidth:34},1:{cellWidth:61},
+                  2:{...rotulo,cellWidth:34},3:{cellWidth:61}}});
+
+  // ── Proteína que entró ──────────────────────────────────────────────────
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    head:[['PROTEÍNA A PORCIONAR','PRECIO KL','KL','CANTIDAD']],headStyles:cabecera,
+    body:[[prot,fmt(precio),kl?kl.toLocaleString('es-CO'):'—',ng(gIni)]],
+    foot:[['','','TOTAL',ng(gIni)]],
+    footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
+                lineColor:[190,190,195],lineWidth:.1},
+    columnStyles:{0:{cellWidth:76},1:{cellWidth:38,halign:'right'},
+                  2:{cellWidth:38,halign:'right'},3:{cellWidth:38,halign:'right'}}});
+
+  // ── Lo que salió porcionado ─────────────────────────────────────────────
+  const cortes=filas.filter(f=>f.nombre).map(f=>{
+    const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
+    return [f.nombre,ng(peso),ng(cant),ng(peso*cant)];
   });
-  doc.autoTable({startY:y+2,head:[['Corte','Peso','Cant','Gramos','Costo und','Costo total']],
-    body:cuerpo.length?cuerpo:[['—','','','','','']],styles:{fontSize:8},headStyles:{fillColor:[176,27,46]}});
-  y=doc.lastAutoTable.finalY+4;
-  // Resultado + conciliación en dos columnas
-  const resultado=[
-    ['Valor factura',fmt(valorFactura())],['Gramos productivos',g(prod)],
-    ['Subtotal productivo',fmt(prod*cpg)],['Costo por gramo',fmt2(cpg)],
-    ['Total pérdida',g(perdida)],['Valor pérdida',fmt(perdida*cpg)],
-    ['Rendimiento',rend.toFixed(1)+'%']
-  ];
-  const dur=$('t_dur').value||'—';
-  const concil=[
-    ['Duración',dur],['# Operaciones',$('t_ops').value||'—'],
-    ['Gramos ingresados',g(gIni)],['Merma',g(merma)],['Desperdicio',g(desp)],
-    ['Dif. no identificada',g(difid)]
-  ];
-  doc.autoTable({startY:y,head:[['Resultado','Valor']],body:resultado,styles:{fontSize:8},
-    headStyles:{fillColor:[176,27,46]},margin:{left:14},tableWidth:88});
-  doc.autoTable({startY:y,head:[['Proceso / Pérdida','Valor']],body:concil,styles:{fontSize:8},
-    headStyles:{fillColor:[125,18,32]},margin:{left:108},tableWidth:88});
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS']],
+    headStyles:cabecera,
+    body:cortes.length?cortes:[['—','','','']],
+    foot:[['','','TOTALES',ng(prod)]],
+    footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
+                lineColor:[190,190,195],lineWidth:.1},
+    columnStyles:{0:{cellWidth:76},1:{cellWidth:38,halign:'right'},
+                  2:{cellWidth:38,halign:'right'},3:{cellWidth:38,halign:'right'}}});
+
+  // ── Pérdidas y cierre en gramos ─────────────────────────────────────────
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    body:[['MERMAS (LÍQUIDOS)',fmt(merma*cpg),ng(merma)],
+          ['DESPERDICIO (HUESO - PELLEJO - GORDO)',fmt(desp*cpg),ng(desp)],
+          ['DIFERENCIAS POR IDENTIFICAR',fmt(difid*cpg),ng(difid)],
+          ['TOTAL EN GRAMOS PRODUCTIVOS (PRECIO ABSORBIDO)',fmt(prod*cpg),ng(prod)],
+          ['TOTAL DE PÉRDIDA',fmt(perdida*cpg),ng(perdida)]],
+    columnStyles:{0:{...rotulo,cellWidth:114},1:{cellWidth:38,halign:'right'},
+                  2:{cellWidth:38,halign:'right'}},
+    didParseCell:d=>{
+      if(d.row.index===3){d.cell.styles.fillColor=[248,215,218];d.cell.styles.fontStyle='bold';}
+      if(d.row.index===4){d.cell.styles.fillColor=[255,242,204];d.cell.styles.fontStyle='bold';}
+    }});
+
+  // ── Indicadores del proceso ─────────────────────────────────────────────
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    body:[['NÚMERO DE OPERACIONES',$('t_ops').value||'—','RENDIMIENTO',rend.toFixed(1)+'%'],
+          ['HORA INICIO',$('t_hi').value||'—','PÉRDIDA',pperd.toFixed(1)+'%'],
+          ['HORA FINAL',$('t_hf').value||'—','COSTO POR GRAMO',fmt2(cpg)],
+          ['DURACIÓN DEL PROCESO',$('t_dur').value||'—','VALOR FACTURA',fmt(valorFactura())]],
+    columnStyles:{0:{...rotulo,cellWidth:48},1:{cellWidth:47,halign:'right'},
+                  2:{...rotulo,cellWidth:48},3:{cellWidth:47,halign:'right'}}});
+
+  // ── Observaciones y firmas ──────────────────────────────────────────────
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    body:[['OBSERVACIONES:'],['']],
+    columnStyles:{0:{cellWidth:190}},
+    didParseCell:d=>{
+      if(d.row.index===0){d.cell.styles.fillColor=GRIS;d.cell.styles.fontStyle='bold';}
+      else d.cell.styles.minCellHeight=14;
+    }});
+  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+    body:[['PORCIONAMIENTO REALIZADO POR','DOCUMENTO ELABORADO POR','VoBo COSTOS (A Y B)'],
+          ['','','']],
+    styles:{...base.styles,halign:'center'},
+    columnStyles:{0:{cellWidth:63.4},1:{cellWidth:63.3},2:{cellWidth:63.3}},
+    didParseCell:d=>{
+      if(d.row.index===0){d.cell.styles.fillColor=GRIS;d.cell.styles.fontStyle='bold';}
+      else d.cell.styles.minCellHeight=16;
+    }});
+
   doc.setFontSize(7);doc.setTextColor(120);
-  doc.text('Generado: '+new Date().toLocaleString('es-CO'),14,290);
+  doc.text('Generado: '+new Date().toLocaleString('es-CO'),M,291);
 }
 function descargarPDFanalisis(){
   if(!$('a_prot').value){toast('Selecciona la proteína primero');return;}
