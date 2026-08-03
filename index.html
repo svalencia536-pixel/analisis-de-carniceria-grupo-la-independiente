@@ -883,6 +883,38 @@ function renderPanel(){
   $('t_rest').querySelector('tbody').innerHTML=rrows.length?rrows.map(r=>`<tr><td>${r.k}</td><td>${r.n}</td><td>${r.rp.toFixed(1)}%</td><td>${fmt(r.costo)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Sin datos</td></tr>`;
 }
 
+/* Entrega de archivos.
+   Dentro de un visor embebido (vista previa, Artifact, iframe) el navegador
+   bloquea las descargas sin avisar: el botón parece muerto. Ahí el archivo se
+   abre en una pestaña aparte, y si tampoco se permite, se dice qué hacer. */
+const embebido=()=>{ try{ return window.self!==window.top; }catch(e){ return true; } };
+/* Sin proteína no hay nada que imprimir. Antes solo salía un aviso abajo, lejos
+   del botón, y parecía que no pasaba nada: ahora lleva el foco al campo. */
+function avisarFalta(){
+  toast('Elige primero la proteína a porcionar');
+  const s=$('a_prot');
+  s.scrollIntoView({behavior:'smooth',block:'center'});
+  s.focus({preventScroll:true});
+  s.style.boxShadow='0 0 0 3px rgba(176,27,46,.35)';
+  setTimeout(()=>{s.style.boxShadow='';},2000);
+}
+
+function entregarArchivo(blob,nombre,etiqueta){
+  const url=URL.createObjectURL(blob);
+  const limpiar=()=>setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(embebido()){
+    const w=window.open(url,'_blank');
+    if(w){ toast(etiqueta+' abierto en otra pestaña'); limpiar(); return; }
+    toast('Este visor bloquea las descargas. Abre el aplicativo en su propia pestaña.');
+    limpiar(); return;
+  }
+  const a=document.createElement('a');
+  a.href=url; a.download=nombre; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(etiqueta+' descargado');
+  limpiar();
+}
+
 function filtroExp(){const d=$('e_desde').value,h=$('e_hasta').value;return analisis.filter(a=>(!d||a.fecha>=d)&&(!h||a.fecha<=h));}
 function resumen(rows){
   const n=rows.length,rp=n?rows.reduce((s,a)=>s+a.rend,0)/n:0;
@@ -914,7 +946,7 @@ function exportPDF(){
     body:rows.map(a=>[a.fecha,a.folio||'',a.rest,a.prod,a.prov||'',fmt(a.precio),Math.round(a.gIni),Math.round(a.prodG),Math.round(a.perdida),a.rend.toFixed(1)+'%',fmt2(a.cpg),fmt(a.subtotal),fmt(a.costoPerd),a.estado]),
     styles:{fontSize:7},headStyles:{fillColor:[176,27,46]}
   });
-  doc.save('Porcionamiento_LaIndependiente.pdf');toast('PDF descargado 📄');
+  entregarArchivo(doc.output('blob'),'Porcionamiento La Independiente.pdf','PDF 📄');
 }
 function exportXLSX(){
   const rows=filtroExp();
@@ -932,7 +964,9 @@ function exportXLSX(){
   const cortes=[];
   rows.forEach(a=>{(a.filas||[]).forEach(f=>{const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);cortes.push({Fecha:a.fecha,Folio:a.folio,Producto:a.prod,Corte:f.nombre,'Peso (g)':f.peso,'Cantidad':f.cant,'Gramos':Math.round(gr),'Costo und':+(a.cpg*(parseFloat(f.peso)||0)).toFixed(2),'Costo total':Math.round(a.cpg*gr)});});});
   if(cortes.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cortes),'Detalle cortes');
-  XLSX.writeFile(wb,'Porcionamiento_LaIndependiente.xlsx');toast('Excel descargado 📊');
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  const tipo='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  entregarArchivo(new Blob([buf],{type:tipo}),'Porcionamiento La Independiente.xlsx','Excel 📊');
 }
 function abrirCorreo(){
   const r=resumen(filtroExp());
@@ -1053,25 +1087,23 @@ function analisisActualPDF(doc){
   doc.text('Generado: '+new Date().toLocaleString('es-CO'),M,291);
 }
 function descargarPDFanalisis(){
-  if(!$('a_prot').value){toast('Selecciona la proteína primero');return;}
+  if(!$('a_prot').value){avisarFalta();return;}
   const {jsPDF}=window.jspdf;const doc=new jsPDF();
   analisisActualPDF(doc);
-  doc.save('Analisis_Porcionamiento_'+($('a_prot').value||'').replace(/\s+/g,'_')+'.pdf');
-  toast('PDF descargado 📄');
+  entregarArchivo(doc.output('blob'),'Análisis Porcionamiento '+$('a_prot').value+'.pdf','PDF 📄');
 }
 async function compartirAnalisis(){
-  if(!$('a_prot').value){toast('Selecciona la proteína primero');return;}
+  if(!$('a_prot').value){avisarFalta();return;}
   const {jsPDF}=window.jspdf;const doc=new jsPDF();
   analisisActualPDF(doc);
   const blob=doc.output('blob');
-  const file=new File([blob],'Analisis_Porcionamiento.pdf',{type:'application/pdf'});
+  const nombre='Análisis Porcionamiento '+$('a_prot').value+'.pdf';
+  const file=new File([blob],nombre,{type:'application/pdf'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file],title:'Análisis de Porcionamiento',text:'Grupo La Independiente'}); }
-    catch(e){ /* cancelado */ }
-  } else {
-    doc.save('Analisis_Porcionamiento.pdf');
-    toast('Tu navegador no permite compartir; se descargó el PDF 📄');
+    try{ await navigator.share({files:[file],title:'Análisis de Porcionamiento',text:'Grupo La Independiente'}); return; }
+    catch(e){ if(e && e.name==='AbortError') return; /* si falla, se entrega igual */ }
   }
+  entregarArchivo(blob,nombre,'PDF 📄');
 }
 
 cargarEstado();
