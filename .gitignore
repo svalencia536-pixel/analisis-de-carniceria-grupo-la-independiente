@@ -1,0 +1,18 @@
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporales de Office
+~$*.xlsx
+~$*.docx
+
+# Node (por si luego se agrega tooling)
+node_modules/
+npm-debug.log*

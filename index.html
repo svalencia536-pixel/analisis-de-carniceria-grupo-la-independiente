@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análisis de Porcionamiento · Grupo La Independiente</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --rojo:#B01B2E;--rojo-osc:#7d1220;--verde:#1e8a4c;--amar:#d9a300;--alert:#c62828;
+    --bg:#f4f5f7;--card:#fff;--txt:#1e2229;--gris:#6b7280;--linea:#e3e6ea;--amarbg:#fff3cd;--verdebg:#e2efda;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Roboto,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+  header{background:linear-gradient(135deg,var(--rojo),var(--rojo-osc));color:#fff;padding:14px 18px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  header h1{font-size:16px;display:flex;align-items:center;gap:10px}
+  header .logo{background:#fff;color:var(--rojo);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  header p{font-size:10.5px;opacity:.85;margin-top:2px}
+
+  /* Layout general: sidebar + contenido */
+  .app{display:flex;min-height:100vh;align-items:stretch}
+  .side{background:var(--rojo-osc);width:210px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .side header{background:linear-gradient(135deg,var(--rojo),var(--rojo-osc))}
+  nav{display:flex;flex-direction:column;padding:8px 0}
+  nav button{text-align:left;background:none;border:none;color:#fff;padding:13px 16px;font-size:13.5px;font-weight:600;cursor:pointer;opacity:.7;border-left:4px solid transparent;white-space:nowrap;width:100%}
+  nav button.active{opacity:1;border-left-color:#fff;background:rgba(255,255,255,.1)}
+  .main{flex:1;min-width:0}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px}
+
+  /* Móvil: el sidebar pasa a barra superior */
+  @media(max-width:760px){
+    .app{flex-direction:column}
+    .side{width:100%;height:auto;position:sticky;top:0;z-index:50}
+    nav{flex-direction:row;overflow-x:auto;padding:0}
+    nav button{flex:1 0 auto;min-width:96px;text-align:center;padding:11px 8px;font-size:12px;border-left:none;border-bottom:3px solid transparent}
+    nav button.active{border-left-color:transparent;border-bottom-color:#fff}
+    header h1{font-size:15px}
+  }
+  .tab{display:none}.tab.active{display:block}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .card h2{font-size:15px;color:var(--rojo);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  label{display:block;font-size:11.5px;font-weight:600;color:var(--gris);margin:8px 0 4px}
+  input,select,textarea{width:100%;padding:10px;border:1px solid var(--linea);border-radius:8px;font-size:15px;background:#fff;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--rojo);box-shadow:0 0 0 2px rgba(176,27,46,.12)}
+  input[readonly]{background:#f7f7f9;color:var(--gris)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:680px){.grid2,.grid3,.grid4{grid-template-columns:1fr 1fr}}
+  @media(max-width:440px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+  .btn{background:var(--rojo);color:#fff;border:none;padding:12px 18px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;width:100%;margin-top:12px}
+  .btn:active{background:var(--rojo-osc)}
+  .btn.sec{background:#fff;color:var(--rojo);border:2px solid var(--rojo)}
+  .btn.gris{background:#eceef1;color:var(--txt)}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:440px){.btn-row{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{background:#f7f2f3;color:var(--rojo);text-align:left;padding:8px 7px;font-size:10.5px;text-transform:uppercase;letter-spacing:.2px}
+  td{padding:6px 7px;border-top:1px solid var(--linea)}
+  td input{padding:6px;font-size:13px}
+  .tbl-scroll{overflow-x:auto}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;color:#fff}
+  .pill.v{background:var(--verde)}.pill.a{background:var(--amar)}.pill.r{background:var(--alert)}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:680px){.kpi-grid{grid-template-columns:1fr 1fr}}
+  .kpi{background:var(--card);border-radius:12px;padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid var(--rojo)}
+  .kpi .val{font-size:20px;font-weight:800}
+  .kpi .lbl{font-size:10.5px;color:var(--gris);margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
+  .del{color:var(--alert);cursor:pointer;font-weight:700;background:none;border:none;font-size:15px}
+  .empty{text-align:center;color:var(--gris);padding:24px;font-size:14px}
+  .res-box{background:#faf7f8;border-radius:10px;padding:14px;margin-top:8px}
+  .res-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--linea);font-size:14px}
+  .res-row:last-child{border-bottom:none}
+  .res-row b{font-weight:800}
+  .rend{font-size:22px;font-weight:800}
+  .mini{font-size:11px;color:var(--gris);margin-top:4px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--txt);color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;z-index:200;opacity:0;transition:.3s;pointer-events:none}
+  .toast.show{opacity:1}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:150;padding:16px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:12px;padding:20px;max-width:460px;width:100%;max-height:90vh;overflow:auto}
+  .modal h3{color:var(--rojo);margin-bottom:12px}
+  .temp-row{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;align-items:center;font-size:12px;padding:5px 0}
+  .temp-row .std{color:var(--gris);font-size:11px}
+  .concil{border-radius:10px;padding:14px;margin-top:8px;font-size:14px}
+  .concil.ok{background:var(--verdebg);border:1px solid var(--verde)}
+  .concil.warn{background:var(--amarbg);border:1px solid var(--amar)}
+  .tag-auto{font-size:9px;background:var(--verde);color:#fff;padding:1px 6px;border-radius:10px;margin-left:6px}
+  .tag-man{font-size:9px;background:var(--amar);color:#fff;padding:1px 6px;border-radius:10px;margin-left:6px}
+
+  /* ===== Impresión: pestaña Nuevo análisis en una sola hoja A4 ===== */
+  @media print{
+    @page{size:A4 portrait;margin:8mm}
+    body{background:#fff;font-size:10px}
+    .side,.toast,.modal-bg,.btn,.no-print,nav,aside{display:none !important}
+    .app{display:block}
+    .main{width:100%}
+    .wrap{max-width:100%;padding:0;margin:0}
+    .tab{display:none !important}
+    .tab.active{display:block !important}
+    .card{box-shadow:none;border:1px solid #ccc;padding:8px;margin-bottom:6px;page-break-inside:avoid;border-radius:6px}
+    .card h2{font-size:12px;margin-bottom:6px}
+    #print-head{display:block !important}
+    label{margin:3px 0 2px;font-size:9px}
+    input,select{padding:4px;font-size:10px;border-color:#ccc}
+    table{font-size:8.5px}
+    th,td{padding:3px 4px}
+    .res-box{padding:8px}
+    .res-row{font-size:10px;padding:3px 0}
+    .rend{font-size:14px}
+    .concil{padding:8px;font-size:10px}
+    .kpi-grid{display:grid !important;grid-template-columns:repeat(4,1fr) !important}
+    .kpi{padding:8px}.kpi .val{font-size:15px}
+    #a_analisis-actions{display:none !important}
+  }
+  #print-head{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+<header>
+  <h1><span class="logo">LI</span> Porcionamiento</h1>
+  <p>Grupo La Independiente</p>
+</header>
+<nav>
+  <button class="active" onclick="tab('analisis',this)">🥩 Nuevo análisis</button>
+  <button onclick="tab('consolidado',this)">📒 Consolidado</button>
+  <button onclick="tab('standar',this)">📏 Estándares</button>
+  <button onclick="tab('matriz',this)">🧩 Matriz cortes</button>
+  <button onclick="tab('panel',this)">📊 Panel</button>
+  <button onclick="tab('config',this)">⚙️ Configuración</button>
+  <button onclick="tab('exportar',this)">📤 Exportar</button>
+</nav>
+</aside>
+
+<div class="main">
+<div class="wrap">
+<div id="print-head" style="text-align:center;border-bottom:2px solid #B01B2E;padding-bottom:8px;margin-bottom:10px">
+  <div style="font-size:16px;font-weight:800;color:#B01B2E">GRUPO LA INDEPENDIENTE</div>
+  <div style="font-size:12px">Análisis de Porcionamiento de Proteínas</div>
+</div>
+<div class="no-print" style="display:flex;justify-content:flex-end;margin-bottom:10px">
+  <button class="btn" style="width:auto;margin:0;padding:9px 16px;font-size:13px" onclick="window.print()">🖨️ Imprimir esta vista</button>
+</div>
+
+<!-- ========= NUEVO ANALISIS ========= -->
+<div id="analisis" class="tab active">
+  <div id="a_analisis-actions" class="card no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <button class="btn" style="width:auto;margin:0;flex:1;min-width:160px" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn sec" style="width:auto;margin:0;flex:1;min-width:160px" onclick="descargarPDFanalisis()">📄 Descargar PDF</button>
+    <button class="btn gris" style="width:auto;margin:0;flex:1;min-width:160px" onclick="compartirAnalisis()">📤 Compartir</button>
+  </div>
+  <div class="card">
+    <h2>🥩 Encabezado del análisis</h2>
+    <div class="grid4">
+      <div><label>Fecha</label><input type="date" id="a_fecha"></div>
+      <div><label>Consecutivo #</label><input id="a_folio" readonly></div>
+      <div><label>Restaurante</label><select id="a_rest"></select></div>
+      <div><label>Elaborado por</label><select id="a_elab"></select></div>
+    </div>
+    <div class="grid3">
+      <div><label>Proveedor</label><select id="a_prov"></select></div>
+      <div><label># Factura</label><input id="a_fact" placeholder="3986"></div>
+      <div><label>Proteína a porcionar</label>
+        <select id="a_prot" onchange="onProtSel()"></select></div>
+    </div>
+    <div class="grid3">
+      <div><label>Precio por kilo ($)</label><input type="number" id="a_precio" oninput="recalc()" placeholder="66000"></div>
+      <div><label>Cantidad (kilos)</label><input type="number" id="a_kl" step="0.1" oninput="recalc()" placeholder="20.6"></div>
+      <div><label>Cantidad inicial (g)</label><input id="a_ginicial" readonly></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⚖️ Matriz de cortes <span id="m_prot" class="mini" style="margin-left:8px"></span></h2>
+    <p class="mini" style="margin-bottom:8px">Al elegir la proteína se cargan sus cortes típicos. Llena la cantidad porcionada de cada uno. Puedes agregar cortes manuales.</p>
+    <div class="tbl-scroll">
+      <table id="t_porc"><thead><tr>
+        <th style="min-width:170px">Corte / Porción</th><th>Peso (g)</th><th>Cant. porcionada</th><th>Gramos</th><th>Costo und</th><th>Costo total</th><th></th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <button class="btn sec" onclick="addFila(true)">➕ Agregar corte manual</button>
+  </div>
+
+  <div class="card">
+    <h2>📉 Pérdidas y merma</h2>
+    <div class="grid3">
+      <div><label>Mermas líquidos (g)</label><input type="number" id="a_merma" oninput="recalc()" value="0"></div>
+      <div><label>Desperdicio hueso/gordo (g)</label><input type="number" id="a_desp" oninput="recalc()" value="0"></div>
+      <div><label>Dif. no identificada (g)</label><input id="a_difid" readonly></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🕐 Variación de horas de porcionamiento</h2>
+    <div class="grid4">
+      <div><label>Hora inicio</label><input type="time" id="t_hi" oninput="calcHoras()"></div>
+      <div><label>Hora final</label><input type="time" id="t_hf" oninput="calcHoras()"></div>
+      <div><label>Duración</label><input id="t_dur" readonly></div>
+      <div><label># Operaciones</label><input type="number" id="t_ops" placeholder="1"></div>
+    </div>
+    <div class="mini" id="t_ritmo"></div>
+  </div>
+
+  <div class="card">
+    <h2>🧾 Conciliación de factura</h2>
+    <div id="c_concil" class="concil ok">Ingresa precio, kilos y los cortes para conciliar.</div>
+  </div>
+
+  <div class="card">
+    <h2>✅ Resultado del análisis</h2>
+    <div class="res-box">
+      <div class="res-row"><span>Valor factura</span><b id="r_fac">$0</b></div>
+      <div class="res-row"><span>Gramos productivos</span><b id="r_prod">0 g</b></div>
+      <div class="res-row"><span>Subtotal productivo ($)</span><b id="r_sub">$0</b></div>
+      <div class="res-row"><span>Costo por gramo</span><b id="r_cpg">$0</b></div>
+      <div class="res-row"><span>Total pérdida (gramos)</span><b id="r_perd">0 g</b></div>
+      <div class="res-row"><span>💰 Valor total de la pérdida</span><b id="r_costoperd" style="color:var(--alert)">$0</b></div>
+      <div class="res-row"><span>Rendimiento</span><span class="rend" id="r_rend">0%</span></div>
+      <div class="res-row"><span>% Pérdida</span><span id="r_pperd" style="font-weight:800">0%</span></div>
+      <div class="res-row"><span>Estado vs. estándar</span><span id="r_estado"></span></div>
+    </div>
+    <button class="btn" onclick="guardarAnalisis()">💾 Guardar en consolidado</button>
+  </div>
+</div>
+
+<!-- ========= CONSOLIDADO ========= -->
+<div id="consolidado" class="tab">
+  <div class="card">
+    <h2>📒 Consolidado de porcionamientos</h2>
+    <div class="grid3">
+      <div><label>Restaurante</label><select id="c_rest" onchange="renderCons()"><option value="">Todos</option></select></div>
+      <div><label>Desde</label><input type="date" id="c_desde" onchange="renderCons()"></div>
+      <div><label>Hasta</label><input type="date" id="c_hasta" onchange="renderCons()"></div>
+    </div>
+    <div class="tbl-scroll" style="margin-top:12px">
+      <table id="t_cons"><thead><tr>
+        <th>Fecha</th><th>Folio</th><th>Rest.</th><th>Producto</th><th>Proveedor</th><th># Fact.</th><th>Precio</th><th>Inicial (g)</th><th>Final (g)</th><th>Pérd. (g)</th><th>% Rend.</th><th>% Pérd.</th><th>Costo/g</th><th>Subtotal ($)</th><th>💰 Pérdida ($)</th><th>Estado</th><th></th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+    <div class="res-box" id="cons_tot" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<!-- ========= ESTANDARES ========= -->
+<div id="standar" class="tab">
+  <div class="card">
+    <h2>📏 Niveles aceptables de pérdida por producto</h2>
+    <p class="mini" style="margin-bottom:10px">Si el rendimiento cae por debajo del mínimo, el análisis se marca en rojo.</p>
+    <div class="grid4" style="align-items:end">
+      <div><label>Producto</label><input id="s_prod" placeholder="LOMO FINO"></div>
+      <div><label>Desperdicio %</label><input type="number" id="s_desp" placeholder="11"></div>
+      <div><label>Merma %</label><input type="number" id="s_merma" placeholder="4"></div>
+      <div><label>No identif. %</label><input type="number" id="s_noid" placeholder="1"></div>
+    </div>
+    <button class="btn sec" onclick="addStd()">➕ Agregar / actualizar estándar</button>
+  </div>
+  <div class="card">
+    <h2>Estándares registrados</h2>
+    <div class="tbl-scroll">
+      <table id="t_std"><thead><tr>
+        <th>Producto</th><th>Desperdicio</th><th>Merma</th><th>No identif.</th><th>Pérdida máx.</th><th>Rend. mín.</th><th></th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ========= MATRIZ CORTES ========= -->
+<div id="matriz" class="tab">
+  <div class="card">
+    <h2>🧩 Matriz de cortes por proteína</h2>
+    <p class="mini" style="margin-bottom:10px">Catálogo de cortes que se auto-cargan al seleccionar cada proteína. Puedes editarlo.</p>
+    <div class="grid3" style="align-items:end">
+      <div><label>Proteína</label><select id="mx_prot" onchange="renderMatriz()"></select></div>
+      <div><label>Nombre del corte</label><input id="mx_corte" placeholder="LOMO FINO X 200 GR"></div>
+      <div><label>Peso (g)</label><input type="number" id="mx_peso" placeholder="200"></div>
+    </div>
+    <button class="btn sec" onclick="addCorteCat()">➕ Agregar corte al catálogo</button>
+  </div>
+  <div class="card">
+    <h2>Cortes de <span id="mx_titulo"></span></h2>
+    <div class="tbl-scroll">
+      <table id="t_mx"><thead><tr><th>Corte</th><th>Peso (g)</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ========= PANEL ========= -->
+<div id="panel" class="tab">
+  <div class="kpi-grid" style="margin-bottom:14px">
+    <div class="kpi"><div class="val" id="k_ops">0</div><div class="lbl">Porcionamientos</div></div>
+    <div class="kpi" style="border-left-color:var(--verde)"><div class="val" id="k_rend">0%</div><div class="lbl">Rend. promedio</div></div>
+    <div class="kpi" style="border-left-color:var(--alert)"><div class="val" id="k_fuera">0</div><div class="lbl">Bajo estándar</div></div>
+    <div class="kpi" style="border-left-color:var(--amar)"><div class="val" id="k_perd">$0</div><div class="lbl">Valor pérdida</div></div>
+  </div>
+  <div class="kpi-grid" style="margin-bottom:14px">
+    <div class="kpi" style="border-left-color:var(--verde)"><div class="val" id="k_sub">$0</div><div class="lbl">Subtotal productivo</div></div>
+    <div class="kpi"><div class="val" id="k_fac">$0</div><div class="lbl">Valor facturas</div></div>
+    <div class="kpi" style="border-left-color:var(--amar)"><div class="val" id="k_pperd">0%</div><div class="lbl">% Pérdida global</div></div>
+    <div class="kpi" style="border-left-color:var(--alert)"><div class="val" id="k_gperd">0 g</div><div class="lbl">Gramos perdidos</div></div>
+  </div>
+  <div class="card">
+    <h2>🔻 Productos con menor rendimiento</h2>
+    <div class="tbl-scroll">
+      <table id="t_prod"><thead><tr><th>Producto</th><th>Análisis</th><th>Rend. prom.</th><th>Pérdida (g)</th><th>Valor pérdida</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🏪 Rendimiento por restaurante</h2>
+    <div class="tbl-scroll">
+      <table id="t_rest"><thead><tr><th>Restaurante</th><th>Análisis</th><th>Rend. prom.</th><th>Valor pérdida</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ========= CONFIGURACIÓN ========= -->
+<div id="config" class="tab">
+  <div class="card">
+    <h2>👤 Personal de corte</h2>
+    <p class="mini" style="margin-bottom:10px">Estas personas aparecen en la lista "Elaborado por" al crear un análisis.</p>
+    <div class="btn-row" style="grid-template-columns:2fr 1fr">
+      <input id="cfg_persona" placeholder="Nombre de la persona" onkeydown="if(event.key==='Enter')addPersona()">
+      <button class="btn sec" style="margin-top:0" onclick="addPersona()">➕ Agregar</button>
+    </div>
+    <div class="tbl-scroll" style="margin-top:12px">
+      <table id="t_personas"><thead><tr><th>Personal de corte</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🏭 Proveedores</h2>
+    <p class="mini" style="margin-bottom:10px">Estos proveedores aparecen en la lista "Proveedor" al crear un análisis.</p>
+    <div class="btn-row" style="grid-template-columns:2fr 1fr">
+      <input id="cfg_prov" placeholder="Nombre del proveedor" onkeydown="if(event.key==='Enter')addProv()">
+      <button class="btn sec" style="margin-top:0" onclick="addProv()">➕ Agregar</button>
+    </div>
+    <div class="tbl-scroll" style="margin-top:12px">
+      <table id="t_provs"><thead><tr><th>Proveedor</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🏪 Restaurantes / puntos de servicio</h2>
+    <div class="btn-row" style="grid-template-columns:2fr 1fr">
+      <input id="cfg_rest" placeholder="Nombre del restaurante" onkeydown="if(event.key==='Enter')addRest()">
+      <button class="btn sec" style="margin-top:0" onclick="addRest()">➕ Agregar</button>
+    </div>
+    <div class="tbl-scroll" style="margin-top:12px">
+      <table id="t_rests"><thead><tr><th>Restaurante</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>💾 Datos guardados</h2>
+    <p class="mini" style="margin-bottom:10px" id="cfg_lsestado">Los análisis, la configuración y el catálogo se guardan automáticamente en este dispositivo/navegador. No se comparten entre equipos.</p>
+    <button class="btn gris" style="background:#f8d7da;color:#7d1220" onclick="borrarDatos()">🗑️ Borrar todos los datos de este dispositivo</button>
+  </div>
+</div>
+
+<!-- ========= EXPORTAR ========= -->
+<div id="exportar" class="tab">
+  <div class="card">
+    <h2>📤 Exportar y enviar</h2>
+    <div class="grid2">
+      <div><label>Desde</label><input type="date" id="e_desde"></div>
+      <div><label>Hasta</label><input type="date" id="e_hasta"></div>
+    </div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn" onclick="exportPDF()">📄 Descargar PDF</button>
+      <button class="btn sec" style="margin-top:0" onclick="exportXLSX()">📊 Descargar Excel</button>
+    </div>
+    <button class="btn gris" onclick="abrirCorreo()">✉️ Enviar reporte por correo</button>
+    <p class="mini" style="margin-top:8px">El correo arma el mensaje con el resumen y abre tu app de correo. Adjunta manualmente el PDF/Excel descargado.</p>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL CORREO -->
+<div class="modal-bg" id="modalCorreo">
+  <div class="modal">
+    <h3>✉️ Enviar reporte por correo</h3>
+    <label>Destinatario(s)</label><input id="c_para" placeholder="compras.gruporojo@gmail.com">
+    <label>Asunto</label><input id="c_asunto">
+    <label>Mensaje</label><textarea id="c_cuerpo" rows="8"></textarea>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn" onclick="lanzarCorreo()">Abrir correo</button>
+      <button class="btn gris" style="margin-top:0" onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let restaurantes=["Rojo Madrid","Gigi","Kinto Elemento","Palo de Mango","Lola","Zaitún"];
+// Listas gestionables desde la pestaña Configuración
+let personas=["JAIVER JIMENEZ"];
+let proveedores=["LA PARISIENNE"];
+
+let catalogo={
+ "ARRACHERA":[["ARRACHERA PORCION X 200 GR",200],["ARRACHERA PORCION X 100 GR",100]],
+ "ASADO DE TIRA":[["ASADO DE TIRA PORCION DE 350G",350],["RECORTE ASADO DE TIRA GRAMOS",1]],
+ "ATUN COLA AMARILLA":[["FILETE DE ATUN CEVICHERIA",1]],
+ "BONDIOLA":[["BONDIOLA X 200GR",200],["BONDIOLA X 100",100],["RECORTE DE BONDIOLA",1]],
+ "CAMARON":[["MIX DE MARISCOS X 150 GR",150],["MIX AL FUEGO X 130",130]],
+ "CAMARON 51/60":[["CAMARON X 250 GR",250],["CAMARON X 100 GR",100]],
+ "CAMARONES 41/50":[["CAMARON TACO",80],["CAMARON SAMPLER",1]],
+ "CARNE ANGUS":[["CARNE HAMBURGUESA X 150GR",150]],
+ "CHICHARRON":[["CHICHARRON X 200 GR",200],["CHICHARRON X 150 GR",150],["CHICHARRON X 100 GR",100],["POLVO DE CHICHARRON",1]],
+ "CHICHARRON DE CERDO":[["CHICHARRON PORC 100",100],["RECORTE APROVECHABLE",1]],
+ "CONEJO":[["CONEJO PORCIONADO X 120 GR",120]],
+ "COSTILLA DE CERDO":[["COSTILLA BABY X 400 GR",400],["COSTILLA DE CERDO X 400 GR",400],["COSTILLA X 400",400],["COSTILLA PORC X 170",170],["RECORTE DE COSTILLA DE CERDO",1]],
+ "ENTRAÑA":[["ENTRAÑA PORC X 250",250],["ENTRAÑA X 220 GR",220],["RECORTE DE ENTRAÑA",1]],
+ "FILETE DE PECHUGA":[["POLLO PICANTE X 340",340],["POLLO A LA NARANJA",150],["CHICKEN SNACKS",140],["ENTREGADO A SUSHI",1],["RECORTE",1],["RECORTE DE PECHUGA",1]],
+ "FILETE DE ROBALO":[["ROBALO X 200",200],["CEVICHE X 120",120],["BASTONES X 100",100],["CURADO MADREGAL",1],["FILETE DE ROBALO LIMPIO SUSHI",1],["PARA SUSHI",1],["RECORTE DE PESCADO",1],["RECORTE DE ROBALO",1]],
+ "FILETE DE SALMON":[["SALMON PORCION",200],["SALMON X 200",200],["SALMON PORC X 150",150],["PARA CEVICHERIA (INSUMO)",1],["RECORTE DE SALMON",1],["RECORTE DE SALMON GRAMOS",1]],
+ "LANGOSTINO U15":[["LANGOSTINO RAVIOLI X 3 UND",90]],
+ "LANGOSTINOS 16/20":[["MIX DE JALEA LIMEÑA X 170 GR",170]],
+ "LOMO DE ATUN":[["ATUN LIMPIO",1],["RECORTE DE ATUN",1]],
+ "LOMO FINO":[["LOMO X 250",250],["LOMO X 220",220],["LOMO FINO X 200 GR",200],["LOMO X 200 GR MILANESA",200],["PICADA DE LOMO X 180 GR",180],["CARPACIO X 950",1],["CARPACIO X 980",1],["LOMO LIMPIO PARA CARPACCIO",1],["RECORTE",1],["RECORTE DE LOMO",1],["SUSHI",1]],
+ "NEW YORK CERTIFICADO":[["CHOP LOI",350],["NEW YORK",300],["ARRACHERA PORCION DE 100G",100]],
+ "PECHUGA":[["MILANESA X 200",200],["PECHUGA X 200",200],["RECORTE",1]],
+ "PESCA BLANCA":[["BASTONES DE PESCADO X 110GR",110],["PESCA BLANCA X 60/70GR",70],["PESCA BLANCA X 50 GR",50],["PULPA DE PESCADO BLANCO",1],["RECORTE DE PESCA BLANCA",1]],
+ "PORK BELLY":[["PORK BELLY PORCION 200G",200],["RECORTE UTIL",1]],
+ "PULPO":[["PULPO X 150",150],["PULPO X 120",120],["PULPO X 90 GR",90],["RECORTE DE PULPO",1],["RECORTE Y CABEZA DE PULPO",1]],
+ "PULPO BABY":[["PULPO X 100",100],["CABEZA",1]],
+ "RABO":[["RABO CON HUESO X 100 GR",100],["RABO X 70 GR",70],["RECORTE",1]],
+ "TENTACULO DE CALAMAR":[["FILETE DE TENTACULO COCIDO",1],["TENTACULO COCIDO",1],["TENTACULO DE CALAMAR COCIDO",1]],
+ "TUBO DE CALAMAR":[["TUBO CALAMAR",250],["RECORTE DE TUBO DE CALAMAR",1]]
+};
+
+let estandares=[
+  {prod:"LOMO FINO",desp:11,merma:4,noid:1},{prod:"NEW YORK CERTIFICADO",desp:1,merma:5,noid:0},
+  {prod:"CAMARON",desp:0,merma:0,noid:0},{prod:"PULPO",desp:30,merma:20,noid:0},
+  {prod:"FILETE DE SALMON",desp:3,merma:3,noid:0},{prod:"FILETE DE ROBALO",desp:5,merma:10,noid:0},
+  {prod:"PECHUGA",desp:2,merma:3,noid:1},{prod:"FILETE DE PECHUGA",desp:2,merma:3,noid:1},
+  {prod:"CHICHARRON DE CERDO",desp:3,merma:1,noid:3},
+  {prod:"LOMO DE ATUN",desp:2,merma:5,noid:0}
+];
+let analisis=[];
+let aId=1;
+let filas=[];
+
+const $=id=>document.getElementById(id);
+const fmt=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO');
+const fmt2=n=>'$'+(Number(n)||0).toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2});
+const g=n=>Math.round(Number(n)||0).toLocaleString('es-CO')+' g';
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function tab(id,btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));$(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');if(id==='panel')renderPanel();if(id==='consolidado')renderCons();if(id==='matriz')renderMatriz();if(id==='config')renderConfig();}
+
+/* ===== Persistencia local (guarda en el dispositivo) ===== */
+const LS_KEY='porcionamiento_la_independiente_v1';
+// Al publicar un catálogo/estándares nuevos se sube CAT_VER: lo guardado con una
+// versión anterior se descarta para que no pise los datos nuevos del código.
+const CAT_VER=2;
+let _lsDisponible=true;
+function persistir(){
+  if(!_lsDisponible)return;
+  try{
+    const data={analisis,aId,personas,proveedores,restaurantes,estandares,catalogo,catVer:CAT_VER};
+    localStorage.setItem(LS_KEY,JSON.stringify(data));
+  }catch(e){ _lsDisponible=false; }
+}
+function cargarEstado(){
+  // probar disponibilidad de localStorage
+  try{ const k='__test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); _lsDisponible=true; }
+  catch(e){ _lsDisponible=false; return; }
+  try{
+    const raw=localStorage.getItem(LS_KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(Array.isArray(d.analisis))analisis=d.analisis;
+    if(typeof d.aId==='number')aId=d.aId;
+    if(Array.isArray(d.personas)&&d.personas.length)personas=d.personas;
+    if(Array.isArray(d.proveedores)&&d.proveedores.length)proveedores=d.proveedores;
+    if(Array.isArray(d.restaurantes)&&d.restaurantes.length)restaurantes=d.restaurantes;
+    if(d.catVer===CAT_VER){
+      if(Array.isArray(d.estandares)&&d.estandares.length)estandares=d.estandares;
+      if(d.catalogo&&typeof d.catalogo==='object'&&Object.keys(d.catalogo).length)catalogo=d.catalogo;
+    }
+  }catch(e){ /* datos corruptos: se ignoran */ }
+}
+function borrarDatos(){
+  if(!confirm('¿Borrar TODOS los datos guardados (análisis, configuración y catálogo) de este dispositivo? Esta acción no se puede deshacer.'))return;
+  try{ localStorage.removeItem(LS_KEY); }catch(e){}
+  location.reload();
+}
+
+function proxConsecutivo(){
+  // el siguiente número de la secuencia = mayor consecutivo guardado + 1
+  const max=analisis.reduce((m,a)=>Math.max(m,a.consec||0),0);
+  return max+1;
+}
+function pintarConsecutivo(){
+  const n=proxConsecutivo();
+  $('a_folio').value=String(n).padStart(4,'0');
+}
+
+function stdDe(prod){
+  const s=estandares.find(x=>prod && x.prod.toUpperCase()===prod.toUpperCase());
+  if(!s)return null;
+  const perdMax=s.desp+s.merma+s.noid;
+  return {...s,perdMax,rendMin:100-perdMax};
+}
+
+/* ===== Configuración: personal, proveedores, restaurantes ===== */
+function renderConfig(){
+  const est=$('cfg_lsestado');
+  if(est){
+    est.textContent=_lsDisponible
+      ? 'Los análisis, la configuración y el catálogo se guardan automáticamente en este dispositivo/navegador. No se comparten entre equipos.'
+      : '⚠️ Este entorno no permite guardado local (por ejemplo, vista previa dentro de una app). Para que los datos se conserven, abre el archivo HTML directamente en tu navegador.';
+  }
+  const rowsP=personas.map((p,i)=>`<tr><td>${p}</td><td><button class="del" onclick="delPersona(${i})">✕</button></td></tr>`).join('');
+  $('t_personas').querySelector('tbody').innerHTML=rowsP||`<tr><td colspan="2" class="empty">Sin personal</td></tr>`;
+  const rowsV=proveedores.map((p,i)=>`<tr><td>${p}</td><td><button class="del" onclick="delProv(${i})">✕</button></td></tr>`).join('');
+  $('t_provs').querySelector('tbody').innerHTML=rowsV||`<tr><td colspan="2" class="empty">Sin proveedores</td></tr>`;
+  const rowsR=restaurantes.map((p,i)=>`<tr><td>${p}</td><td><button class="del" onclick="delRest(${i})">✕</button></td></tr>`).join('');
+  $('t_rests').querySelector('tbody').innerHTML=rowsR||`<tr><td colspan="2" class="empty">Sin restaurantes</td></tr>`;
+}
+function addPersona(){
+  const v=$('cfg_persona').value.trim();
+  if(!v){toast('Escribe un nombre');return;}
+  if(personas.includes(v)){toast('Ya existe');return;}
+  personas.push(v);$('cfg_persona').value='';fillSelects();renderConfig();persistir();toast('Persona agregada ✅');
+}
+function delPersona(i){personas.splice(i,1);fillSelects();renderConfig();persistir();}
+function addProv(){
+  const v=$('cfg_prov').value.trim();
+  if(!v){toast('Escribe un proveedor');return;}
+  if(proveedores.includes(v)){toast('Ya existe');return;}
+  proveedores.push(v);$('cfg_prov').value='';fillSelects();renderConfig();persistir();toast('Proveedor agregado ✅');
+}
+function delProv(i){proveedores.splice(i,1);fillSelects();renderConfig();persistir();}
+function addRest(){
+  const v=$('cfg_rest').value.trim();
+  if(!v){toast('Escribe un restaurante');return;}
+  if(restaurantes.includes(v)){toast('Ya existe');return;}
+  restaurantes.push(v);$('cfg_rest').value='';fillSelects();renderConfig();persistir();toast('Restaurante agregado ✅');
+}
+function delRest(i){restaurantes.splice(i,1);fillSelects();renderConfig();persistir();}
+
+function fillSelects(){
+  $('a_rest').innerHTML=restaurantes.map(r=>`<option>${r}</option>`).join('');
+  $('a_elab').innerHTML=personas.map(p=>`<option>${p}</option>`).join('');
+  $('a_prov').innerHTML='<option value="">— Selecciona —</option>'+proveedores.map(p=>`<option>${p}</option>`).join('');
+  const prots=Object.keys(catalogo).sort();
+  $('a_prot').innerHTML='<option value="">— Selecciona —</option>'+prots.map(p=>`<option>${p}</option>`).join('');
+  $('c_rest').innerHTML='<option value="">Todos</option>'+restaurantes.map(r=>`<option>${r}</option>`).join('');
+  $('mx_prot').innerHTML=prots.map(p=>`<option>${p}</option>`).join('');
+}
+
+function onProtSel(){
+  const prot=$('a_prot').value;
+  $('m_prot').textContent=prot?('· '+prot):'';
+  filas=[];
+  if(prot && catalogo[prot]){
+    catalogo[prot].forEach(([nom,peso])=>filas.push({nombre:nom,peso:peso,cant:'',auto:true}));
+    filas.push({nombre:'',peso:'',cant:'',auto:false});
+    filas.push({nombre:'',peso:'',cant:'',auto:false});
+  }
+  recalc();
+}
+
+function addFila(manual){filas.push({nombre:'',peso:'',cant:'',auto:!manual});renderFilas();}
+function renderFilas(){
+  const tb=$('t_porc').querySelector('tbody');
+  if(!filas.length){tb.innerHTML=`<tr><td colspan="7" class="empty">Selecciona una proteína para cargar sus cortes</td></tr>`;return;}
+  const cpg=costoPorGramo();
+  tb.innerHTML=filas.map((f,i)=>{
+    const gramos=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);
+    const costoUnd=cpg*(parseFloat(f.peso)||0);
+    const costoTot=costoUnd*(parseFloat(f.cant)||0);
+    const tag=f.auto?'<span class="tag-auto">auto</span>':'<span class="tag-man">manual</span>';
+    return `<tr>
+      <td><input value="${f.nombre}" oninput="upd(${i},'nombre',this.value)" placeholder="Corte...">${tag}</td>
+      <td><input type="number" value="${f.peso}" oninput="upd(${i},'peso',this.value)" style="width:70px"></td>
+      <td><input type="number" value="${f.cant}" oninput="upd(${i},'cant',this.value)" style="width:70px"></td>
+      <td>${g(gramos)}</td><td>${fmt(costoUnd)}</td><td>${fmt(costoTot)}</td>
+      <td><button class="del" onclick="delFila(${i})">✕</button></td></tr>`;
+  }).join('');
+}
+function upd(i,k,v){filas[i][k]=v;recalc();}
+function delFila(i){filas.splice(i,1);recalc();}
+
+function gramosPorcionados(){return filas.reduce((s,f)=>s+(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0),0);}
+function valorFactura(){return (parseFloat($('a_precio').value)||0)*(parseFloat($('a_kl').value)||0);}
+function gramosIniciales(){return (parseFloat($('a_kl').value)||0)*1000;}
+function costoPorGramo(){const prod=gramosPorcionados();return prod>0?valorFactura()/prod:0;}
+
+function calcHoras(){
+  const hi=$('t_hi').value, hf=$('t_hf').value;
+  if(!hi||!hf){$('t_dur').value='';$('t_ritmo').textContent='';return;}
+  const [h1,m1]=hi.split(':').map(Number),[h2,m2]=hf.split(':').map(Number);
+  let mins=(h2*60+m2)-(h1*60+m1); if(mins<0)mins+=1440;
+  const hh=Math.floor(mins/60),mm=mins%60;
+  $('t_dur').value=`${hh}h ${mm}m`;
+  const prod=gramosPorcionados();
+  if(mins>0 && prod>0){
+    const kgH=(prod/1000)/(mins/60);
+    $('t_ritmo').textContent=`Ritmo: ${kgH.toFixed(1)} kg/hora procesados (${mins} min totales).`;
+  } else $('t_ritmo').textContent='';
+}
+
+function conciliar(prod,cpg){
+  const vf=valorFactura();
+  const absorbido=prod*cpg;
+  const gIni=gramosIniciales();
+  const difG=gIni-prod-(parseFloat($('a_merma').value)||0)-(parseFloat($('a_desp').value)||0);
+  const box=$('c_concil');
+  if(!vf||!prod){box.className='concil ok';box.textContent='Ingresa precio, kilos y los cortes para conciliar.';return;}
+  const difValor=vf-absorbido;
+  const ok=Math.abs(difG)<=gIni*0.02;
+  box.className='concil '+(ok?'ok':'warn');
+  box.innerHTML=`
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Valor factura</span><b>${fmt(vf)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Valor absorbido (productivo)</span><b>${fmt(absorbido)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Diferencia de valor</span><b>${fmt(difValor)}</b></div>
+    <hr style="border:none;border-top:1px solid rgba(0,0,0,.1);margin:6px 0">
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Gramos ingresados</span><b>${g(gIni)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>Gramos explicados (prod + mermas)</span><b>${g(gIni-difG)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0"><span>${ok?'✅':'⚠️'} Gramos sin explicar</span><b>${g(difG)}</b></div>`;
+}
+
+function recalc(){
+  const gIni=gramosIniciales();
+  $('a_ginicial').value=gIni?g(gIni):'';
+  const prod=gramosPorcionados();
+  const merma=parseFloat($('a_merma').value)||0, desp=parseFloat($('a_desp').value)||0;
+  const difid=Math.max(gIni-prod-merma-desp,0);
+  $('a_difid').value=g(difid);
+  const perdida=merma+desp+difid;
+  const rend=gIni>0?(prod/gIni*100):0, pperd=gIni>0?(perdida/gIni*100):0;
+  const cpg=costoPorGramo();
+  $('r_fac').textContent=fmt(valorFactura());
+  $('r_prod').textContent=g(prod);
+  $('r_sub').textContent=fmt(prod*cpg);
+  $('r_cpg').textContent=fmt2(cpg)+' /g';
+  $('r_perd').textContent=g(perdida);
+  $('r_costoperd').textContent=fmt(perdida*cpg);
+  $('r_rend').textContent=rend.toFixed(1)+'%';
+  $('r_pperd').textContent=pperd.toFixed(1)+'%';
+  const st=stdDe($('a_prot').value);
+  let est='<span class="pill v">Sin estándar</span>';
+  if(st){
+    const s=rend>=st.rendMin?'v':(rend>=st.rendMin-3?'a':'r');
+    const txt=s==='v'?`✅ OK (mín ${st.rendMin}%)`:s==='a'?`⚠️ Al límite (mín ${st.rendMin}%)`:`❌ Bajo estándar (mín ${st.rendMin}%)`;
+    est=`<span class="pill ${s}">${txt}</span>`;
+  }
+  $('r_estado').innerHTML=est;
+  $('r_rend').style.color=st?(rend>=st.rendMin?'var(--verde)':rend>=st.rendMin-3?'var(--amar)':'var(--alert)'):'var(--txt)';
+  conciliar(prod,cpg);
+  calcHoras();
+  renderFilas();
+}
+
+function guardarAnalisis(){
+  if(!$('a_prot').value){toast('Selecciona la proteína');return;}
+  if(!gramosIniciales()){toast('Ingresa los kilos');return;}
+  if(!gramosPorcionados()){toast('Llena la cantidad porcionada de al menos un corte');return;}
+  const gIni=gramosIniciales(), prod=gramosPorcionados();
+  const merma=parseFloat($('a_merma').value)||0, desp=parseFloat($('a_desp').value)||0;
+  const difid=Math.max(gIni-prod-merma-desp,0), perdida=merma+desp+difid;
+  const rend=prod/gIni*100, cpg=costoPorGramo();
+  const st=stdDe($('a_prot').value);
+  const estado=st?(rend>=st.rendMin?'OK':rend>=st.rendMin-3?'Límite':'Bajo estándar'):'Sin estándar';
+  const hi=$('t_hi').value,hf=$('t_hf').value; let dur='';
+  if(hi&&hf){const [h1,m1]=hi.split(':').map(Number),[h2,m2]=hf.split(':').map(Number);let mm=(h2*60+m2)-(h1*60+m1);if(mm<0)mm+=1440;dur=`${Math.floor(mm/60)}h ${mm%60}m`;}
+  const consec=proxConsecutivo();
+  analisis.push({
+    id:aId++,consec,fecha:$('a_fecha').value||new Date().toISOString().slice(0,10),
+    folio:String(consec).padStart(4,'0'),rest:$('a_rest').value,elab:$('a_elab').value,
+    prov:$('a_prov').value,fact:$('a_fact').value,prod:$('a_prot').value,
+    precio:parseFloat($('a_precio').value)||0,kl:parseFloat($('a_kl').value)||0,
+    gIni,prodG:prod,merma,desp,difid,perdida,rend,cpg,valorFac:valorFactura(),
+    subtotal:prod*cpg,costoPerd:perdida*cpg,estado,
+    filas:JSON.parse(JSON.stringify(filas.filter(f=>f.nombre&&f.cant))),
+    dur,ops:$('t_ops').value,hi,hf
+  });
+  filas=[]; ['a_folio','a_fact','a_precio','a_kl','t_hi','t_hf','t_ops'].forEach(x=>$(x).value='');
+  ['a_merma','a_desp'].forEach(x=>$(x).value='0');
+  $('a_prot').value=''; $('m_prot').textContent='';
+  persistir();
+  pintarConsecutivo();
+  recalc();
+  toast('Análisis guardado ✅ (Consec. '+String(consec).padStart(4,'0')+')');
+}
+
+function renderCons(){
+  const fr=$('c_rest').value, d=$('c_desde').value, h=$('c_hasta').value;
+  let rows=analisis.filter(a=>(!fr||a.rest===fr)&&(!d||a.fecha>=d)&&(!h||a.fecha<=h)).sort((a,b)=>b.id-a.id);
+  const tb=$('t_cons').querySelector('tbody');
+  tb.innerHTML=rows.length?rows.map(a=>{
+    const s=a.estado==='OK'?'v':a.estado==='Límite'?'a':a.estado==='Bajo estándar'?'r':'v';
+    const pperd=a.gIni>0?(a.perdida/a.gIni*100):0;
+    return `<tr>
+      <td>${a.fecha}</td><td>${a.folio||'—'}</td><td>${a.rest}</td><td>${a.prod}</td>
+      <td>${a.prov||'—'}</td><td>${a.fact||'—'}</td><td>${fmt(a.precio)}</td><td>${g(a.gIni)}</td><td>${g(a.prodG)}</td>
+      <td>${g(a.perdida)}</td><td>${a.rend.toFixed(1)}%</td><td>${pperd.toFixed(1)}%</td>
+      <td>${fmt2(a.cpg)}</td><td>${fmt(a.subtotal)}</td><td style="color:var(--alert);font-weight:700">${fmt(a.costoPerd)}</td>
+      <td><span class="pill ${s}">${a.estado}</span></td>
+      <td><button class="del" onclick="delAn(${a.id})">✕</button></td></tr>`;
+  }).join(''):`<tr><td colspan="17" class="empty">Sin análisis registrados</td></tr>`;
+  const box=$('cons_tot');
+  if(rows.length){
+    const gPerd=rows.reduce((s,a)=>s+a.perdida,0);
+    const vPerd=rows.reduce((s,a)=>s+a.costoPerd,0);
+    const sub=rows.reduce((s,a)=>s+a.subtotal,0);
+    const gIniT=rows.reduce((s,a)=>s+a.gIni,0);
+    box.innerHTML=`
+      <div class="res-row"><span>Gramaje total de pérdida</span><b>${g(gPerd)}</b></div>
+      <div class="res-row"><span>% Pérdida global</span><b>${(gIniT>0?gPerd/gIniT*100:0).toFixed(1)}%</b></div>
+      <div class="res-row"><span>Subtotal productivo</span><b>${fmt(sub)}</b></div>
+      <div class="res-row"><span>💰 VALOR TOTAL DE LA PÉRDIDA</span><b style="color:var(--alert);font-size:17px">${fmt(vPerd)}</b></div>`;
+  } else box.innerHTML='';
+}
+function delAn(id){analisis=analisis.filter(a=>a.id!==id);renderCons();pintarConsecutivo();persistir();}
+
+function addStd(){
+  const p=$('s_prod').value.trim().toUpperCase();
+  if(!p){toast('Ingresa el producto');return;}
+  const o={prod:p,desp:parseFloat($('s_desp').value)||0,merma:parseFloat($('s_merma').value)||0,noid:parseFloat($('s_noid').value)||0};
+  const i=estandares.findIndex(x=>x.prod===p);
+  if(i>=0)estandares[i]=o;else estandares.push(o);
+  ['s_prod','s_desp','s_merma','s_noid'].forEach(x=>$(x).value='');
+  renderStd();persistir();toast('Estándar guardado ✅');
+}
+function delStd(p){estandares=estandares.filter(x=>x.prod!==p);renderStd();persistir();}
+function renderStd(){
+  const tb=$('t_std').querySelector('tbody');
+  tb.innerHTML=estandares.map(s=>{
+    const pm=s.desp+s.merma+s.noid;
+    return `<tr><td>${s.prod}</td><td>${s.desp}%</td><td>${s.merma}%</td><td>${s.noid}%</td>
+      <td>${pm}%</td><td><b>${100-pm}%</b></td>
+      <td><button class="del" onclick="delStd('${s.prod}')">✕</button></td></tr>`;
+  }).join('');
+}
+
+function renderMatriz(){
+  const p=$('mx_prot').value;
+  $('mx_titulo').textContent=p||'';
+  const tb=$('t_mx').querySelector('tbody');
+  const cortes=catalogo[p]||[];
+  tb.innerHTML=cortes.length?cortes.map((c,i)=>`<tr>
+    <td>${c[0]}</td><td>${c[1]} g</td>
+    <td><button class="del" onclick="delCorteCat(${i})">✕</button></td></tr>`).join(''):`<tr><td colspan="3" class="empty">Sin cortes</td></tr>`;
+}
+function addCorteCat(){
+  const p=$('mx_prot').value, nom=$('mx_corte').value.trim(), peso=parseFloat($('mx_peso').value);
+  if(!p||!nom||isNaN(peso)){toast('Completa proteína, corte y peso');return;}
+  catalogo[p].push([nom.toUpperCase(),peso]);
+  $('mx_corte').value='';$('mx_peso').value='';
+  renderMatriz();persistir();toast('Corte agregado al catálogo ✅');
+}
+function delCorteCat(i){const p=$('mx_prot').value;catalogo[p].splice(i,1);renderMatriz();persistir();}
+
+function renderPanel(){
+  const n=analisis.length;
+  const rendProm=n?analisis.reduce((s,a)=>s+a.rend,0)/n:0;
+  const fuera=analisis.filter(a=>a.estado==='Bajo estándar').length;
+  const costoPerd=analisis.reduce((s,a)=>s+a.costoPerd,0);
+  const subtotal=analisis.reduce((s,a)=>s+a.subtotal,0);
+  const valorFac=analisis.reduce((s,a)=>s+a.valorFac,0);
+  const gPerd=analisis.reduce((s,a)=>s+a.perdida,0);
+  const gIniT=analisis.reduce((s,a)=>s+a.gIni,0);
+  $('k_ops').textContent=n;$('k_rend').textContent=rendProm.toFixed(1)+'%';
+  $('k_fuera').textContent=fuera;$('k_perd').textContent=fmt(costoPerd);
+  $('k_sub').textContent=fmt(subtotal);$('k_fac').textContent=fmt(valorFac);
+  $('k_pperd').textContent=(gIniT>0?gPerd/gIniT*100:0).toFixed(1)+'%';$('k_gperd').textContent=g(gPerd);
+  const byP={};
+  analisis.forEach(a=>{(byP[a.prod]=byP[a.prod]||{n:0,rend:0,perd:0,costo:0});byP[a.prod].n++;byP[a.prod].rend+=a.rend;byP[a.prod].perd+=a.perdida;byP[a.prod].costo+=a.costoPerd;});
+  const prows=Object.entries(byP).map(([k,v])=>({k,...v,rp:v.rend/v.n})).sort((a,b)=>a.rp-b.rp).slice(0,10);
+  $('t_prod').querySelector('tbody').innerHTML=prows.length?prows.map(p=>`<tr><td>${p.k}</td><td>${p.n}</td><td>${p.rp.toFixed(1)}%</td><td>${g(p.perd)}</td><td>${fmt(p.costo)}</td></tr>`).join(''):`<tr><td colspan="5" class="empty">Sin datos</td></tr>`;
+  const byR={};
+  analisis.forEach(a=>{(byR[a.rest]=byR[a.rest]||{n:0,rend:0,costo:0});byR[a.rest].n++;byR[a.rest].rend+=a.rend;byR[a.rest].costo+=a.costoPerd;});
+  const rrows=Object.entries(byR).map(([k,v])=>({k,...v,rp:v.rend/v.n})).sort((a,b)=>b.costo-a.costo);
+  $('t_rest').querySelector('tbody').innerHTML=rrows.length?rrows.map(r=>`<tr><td>${r.k}</td><td>${r.n}</td><td>${r.rp.toFixed(1)}%</td><td>${fmt(r.costo)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Sin datos</td></tr>`;
+}
+
+function filtroExp(){const d=$('e_desde').value,h=$('e_hasta').value;return analisis.filter(a=>(!d||a.fecha>=d)&&(!h||a.fecha<=h));}
+function resumen(rows){
+  const n=rows.length,rp=n?rows.reduce((s,a)=>s+a.rend,0)/n:0;
+  const fuera=rows.filter(a=>a.estado==='Bajo estándar').length;
+  const costo=rows.reduce((s,a)=>s+a.costoPerd,0);
+  const sub=rows.reduce((s,a)=>s+a.subtotal,0);
+  const fac=rows.reduce((s,a)=>s+a.valorFac,0);
+  const gPerd=rows.reduce((s,a)=>s+a.perdida,0);
+  return{n,rp:rp.toFixed(1),fuera,costo,sub,fac,gPerd:Math.round(gPerd)};
+}
+function exportPDF(){
+  const rows=filtroExp();
+  if(!rows.length){toast('No hay análisis para exportar');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({orientation:'landscape'});
+  const r=resumen(rows);
+  doc.setFillColor(176,27,46);doc.rect(0,0,297,22,'F');
+  doc.setTextColor(255);doc.setFontSize(15);doc.text('Análisis de Porcionamiento de Proteínas',14,11);
+  doc.setFontSize(9);doc.text('Grupo La Independiente',14,18);
+  doc.setTextColor(30);doc.setFontSize(9);
+  const per=($('e_desde').value||'inicio')+' a '+($('e_hasta').value||'hoy');
+  doc.text('Período: '+per+'   |   Generado: '+new Date().toLocaleString('es-CO'),14,29);
+  doc.setFontSize(11);doc.setTextColor(176,27,46);doc.text('Resumen',14,37);
+  doc.setTextColor(30);doc.setFontSize(9);
+  doc.text(`Porcionamientos: ${r.n}    Rendimiento promedio: ${r.rp}%    Bajo estándar: ${r.fuera}`,14,43);
+  doc.text(`Valor facturas: ${fmt(r.fac)}    Subtotal productivo: ${fmt(r.sub)}    Gramaje pérdida: ${r.gPerd.toLocaleString('es-CO')} g    Valor pérdida: ${fmt(r.costo)}`,14,48);
+  doc.autoTable({
+    startY:53,
+    head:[['Fecha','Folio','Rest.','Producto','Prov.','Precio','Inic. g','Final g','Pérd. g','Rend.','Costo/g','Subtotal','Pérdida $','Estado']],
+    body:rows.map(a=>[a.fecha,a.folio||'',a.rest,a.prod,a.prov||'',fmt(a.precio),Math.round(a.gIni),Math.round(a.prodG),Math.round(a.perdida),a.rend.toFixed(1)+'%',fmt2(a.cpg),fmt(a.subtotal),fmt(a.costoPerd),a.estado]),
+    styles:{fontSize:7},headStyles:{fillColor:[176,27,46]}
+  });
+  doc.save('Porcionamiento_LaIndependiente.pdf');toast('PDF descargado 📄');
+}
+function exportXLSX(){
+  const rows=filtroExp();
+  if(!rows.length){toast('No hay análisis para exportar');return;}
+  const r=resumen(rows);
+  const wb=XLSX.utils.book_new();
+  const res=[['ANÁLISIS DE PORCIONAMIENTO — GRUPO LA INDEPENDIENTE'],[],
+    ['Porcionamientos',r.n],['Rendimiento prom %',r.rp],['Bajo estándar',r.fuera],
+    ['Valor facturas',r.fac],['Subtotal productivo',r.sub],
+    ['Gramaje total pérdida (g)',r.gPerd],['VALOR TOTAL PÉRDIDA',r.costo],
+    ['Generado',new Date().toLocaleString('es-CO')]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(res),'Resumen');
+  const det=rows.map(a=>({Fecha:a.fecha,'Folio #':a.folio,'Producto a Porcionar':a.prod,Proveedor:a.prov,'# De Factura':a.fact,'Precio Compra':a.precio,'Cantidad Inicial (gr)':Math.round(a.gIni),'Cantidad Final (gr)':Math.round(a.prodG),'Pérdida (gr)':Math.round(a.perdida),'% Rendimiento':+(a.rend/100).toFixed(4),'% Pérdida':+((a.perdida/a.gIni)||0).toFixed(4),'Valor Factura ($)':Math.round(a.valorFac),'Costo x Gramo ($)':+a.cpg.toFixed(2),'Subtotal Productivo ($)':Math.round(a.subtotal),'Costo Pérdida ($)':Math.round(a.costoPerd),'Duración':a.dur,'# Operaciones':a.ops,Restaurante:a.rest,Estado:a.estado,Elaboró:a.elab}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(det),'Consolidado');
+  const cortes=[];
+  rows.forEach(a=>{(a.filas||[]).forEach(f=>{const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);cortes.push({Fecha:a.fecha,Folio:a.folio,Producto:a.prod,Corte:f.nombre,'Peso (g)':f.peso,'Cantidad':f.cant,'Gramos':Math.round(gr),'Costo und':+(a.cpg*(parseFloat(f.peso)||0)).toFixed(2),'Costo total':Math.round(a.cpg*gr)});});});
+  if(cortes.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cortes),'Detalle cortes');
+  XLSX.writeFile(wb,'Porcionamiento_LaIndependiente.xlsx');toast('Excel descargado 📊');
+}
+function abrirCorreo(){
+  const r=resumen(filtroExp());
+  $('c_asunto').value='Análisis de Porcionamiento — Grupo La Independiente';
+  $('c_cuerpo').value=`Buen día,\n\nAdjunto el reporte de análisis de porcionamiento de proteínas.\n\nRESUMEN:\n• Porcionamientos: ${r.n}\n• Rendimiento promedio: ${r.rp}%\n• Análisis bajo estándar: ${r.fuera}\n• Valor de facturas: ${fmt(r.fac)}\n• Subtotal productivo: ${fmt(r.sub)}\n• Gramaje total de pérdida: ${r.gPerd.toLocaleString('es-CO')} g\n• Valor total de la pérdida: ${fmt(r.costo)}\n\n(Recuerda adjuntar el PDF o Excel descargado.)\n\nSaludos,\nÁrea de Costos`;
+  $('modalCorreo').classList.add('show');
+}
+function cerrarModal(){$('modalCorreo').classList.remove('show');}
+function lanzarCorreo(){
+  window.location.href=`mailto:${encodeURIComponent($('c_para').value)}?subject=${encodeURIComponent($('c_asunto').value)}&body=${encodeURIComponent($('c_cuerpo').value)}`;
+  cerrarModal();toast('Abriendo tu app de correo ✉️');
+}
+
+/* ===== PDF del análisis actual (una sola hoja) ===== */
+function analisisActualPDF(doc){
+  const prot=$('a_prot').value||'—';
+  const gIni=gramosIniciales(), prod=gramosPorcionados();
+  const merma=parseFloat($('a_merma').value)||0, desp=parseFloat($('a_desp').value)||0;
+  const difid=Math.max(gIni-prod-merma-desp,0), perdida=merma+desp+difid;
+  const rend=gIni>0?prod/gIni*100:0, cpg=costoPorGramo();
+  // Encabezado
+  doc.setFillColor(176,27,46);doc.rect(0,0,210,20,'F');
+  doc.setTextColor(255);doc.setFontSize(13);doc.text('GRUPO LA INDEPENDIENTE',105,9,{align:'center'});
+  doc.setFontSize(9);doc.text('Análisis de Porcionamiento de Proteínas',105,15,{align:'center'});
+  doc.setTextColor(30);doc.setFontSize(9);
+  let y=27;
+  const enc=[
+    ['Fecha',$('a_fecha').value||'—','Folio',$('a_folio').value||'—'],
+    ['Restaurante',$('a_rest').value||'—','Elaboró',$('a_elab').value||'—'],
+    ['Proveedor',$('a_prov').value||'—','Factura',$('a_fact').value||'—'],
+    ['Proteína',prot,'Precio/kl',fmt($('a_precio').value||0)],
+    ['Kilos',($('a_kl').value||0)+' kg','Cant. inicial',g(gIni)]
+  ];
+  doc.autoTable({startY:y,body:enc,theme:'plain',styles:{fontSize:9,cellPadding:1.5},
+    columnStyles:{0:{fontStyle:'bold',cellWidth:28},1:{cellWidth:60},2:{fontStyle:'bold',cellWidth:28},3:{cellWidth:60}}});
+  y=doc.lastAutoTable.finalY+4;
+  // Matriz de cortes
+  doc.setFontSize(10);doc.setTextColor(176,27,46);doc.text('Matriz de cortes',14,y);y+=2;
+  const cuerpo=filas.filter(f=>f.nombre).map(f=>{
+    const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);
+    return [f.nombre,(f.peso||0)+' g',f.cant||0,g(gr),fmt(cpg*(parseFloat(f.peso)||0)),fmt(cpg*gr)];
+  });
+  doc.autoTable({startY:y+2,head:[['Corte','Peso','Cant','Gramos','Costo und','Costo total']],
+    body:cuerpo.length?cuerpo:[['—','','','','','']],styles:{fontSize:8},headStyles:{fillColor:[176,27,46]}});
+  y=doc.lastAutoTable.finalY+4;
+  // Resultado + conciliación en dos columnas
+  const resultado=[
+    ['Valor factura',fmt(valorFactura())],['Gramos productivos',g(prod)],
+    ['Subtotal productivo',fmt(prod*cpg)],['Costo por gramo',fmt2(cpg)],
+    ['Total pérdida',g(perdida)],['Valor pérdida',fmt(perdida*cpg)],
+    ['Rendimiento',rend.toFixed(1)+'%']
+  ];
+  const dur=$('t_dur').value||'—';
+  const concil=[
+    ['Duración',dur],['# Operaciones',$('t_ops').value||'—'],
+    ['Gramos ingresados',g(gIni)],['Merma',g(merma)],['Desperdicio',g(desp)],
+    ['Dif. no identificada',g(difid)]
+  ];
+  doc.autoTable({startY:y,head:[['Resultado','Valor']],body:resultado,styles:{fontSize:8},
+    headStyles:{fillColor:[176,27,46]},margin:{left:14},tableWidth:88});
+  doc.autoTable({startY:y,head:[['Proceso / Pérdida','Valor']],body:concil,styles:{fontSize:8},
+    headStyles:{fillColor:[125,18,32]},margin:{left:108},tableWidth:88});
+  doc.setFontSize(7);doc.setTextColor(120);
+  doc.text('Generado: '+new Date().toLocaleString('es-CO'),14,290);
+}
+function descargarPDFanalisis(){
+  if(!$('a_prot').value){toast('Selecciona la proteína primero');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF();
+  analisisActualPDF(doc);
+  doc.save('Analisis_Porcionamiento_'+($('a_prot').value||'').replace(/\s+/g,'_')+'.pdf');
+  toast('PDF descargado 📄');
+}
+async function compartirAnalisis(){
+  if(!$('a_prot').value){toast('Selecciona la proteína primero');return;}
+  const {jsPDF}=window.jspdf;const doc=new jsPDF();
+  analisisActualPDF(doc);
+  const blob=doc.output('blob');
+  const file=new File([blob],'Analisis_Porcionamiento.pdf',{type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:'Análisis de Porcionamiento',text:'Grupo La Independiente'}); }
+    catch(e){ /* cancelado */ }
+  } else {
+    doc.save('Analisis_Porcionamiento.pdf');
+    toast('Tu navegador no permite compartir; se descargó el PDF 📄');
+  }
+}
+
+cargarEstado();
+$('a_fecha').value=new Date().toISOString().slice(0,10);
+fillSelects();renderStd();renderFilas();renderMatriz();renderConfig();pintarConsecutivo();recalc();
+</script>
+</body>
+</html>
