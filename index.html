@@ -1047,31 +1047,37 @@ function analisisActualPDF(doc){
                   2:{cellWidth:25,halign:'right'},3:{cellWidth:25,halign:'right'},
                   4:{cellWidth:31,halign:'right'},5:{cellWidth:31,halign:'right'}}});
 
-  // ── Pérdidas y cierre en gramos ─────────────────────────────────────────
-  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
-    body:[['MERMAS (LÍQUIDOS)',fmt(merma*cpg),ng(merma)],
-          ['DESPERDICIO (HUESO - PELLEJO - GORDO)',fmt(desp*cpg),ng(desp)],
-          ['DIFERENCIAS POR IDENTIFICAR',fmt(difid*cpg),ng(difid)],
-          ['TOTAL EN GRAMOS PRODUCTIVOS (PRECIO ABSORBIDO)',fmt(prod*cpg),ng(prod)],
-          ['TOTAL DE PÉRDIDA',fmt(perdida*cpg),ng(perdida)]],
-    columnStyles:{0:{...rotulo,cellWidth:114},1:{cellWidth:38,halign:'right'},
-                  2:{cellWidth:38,halign:'right'}},
-    didParseCell:d=>{
-      if(d.row.index===3){d.cell.styles.fillColor=[248,215,218];d.cell.styles.fontStyle='bold';}
-      if(d.row.index===4){d.cell.styles.fillColor=[255,242,204];d.cell.styles.fontStyle='bold';}
-    }});
-
-  // ── Indicadores del proceso ─────────────────────────────────────────────
-  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
-    body:[['NÚMERO DE OPERACIONES',$('t_ops').value||'—','RENDIMIENTO',rend.toFixed(1)+'%'],
-          ['HORA INICIO',$('t_hi').value||'—','PÉRDIDA',pperd.toFixed(1)+'%'],
-          ['HORA FINAL',$('t_hf').value||'—','COSTO POR GRAMO',fmt2(cpg)],
-          ['DURACIÓN DEL PROCESO',$('t_dur').value||'—','VALOR FACTURA',fmt(valorFactura())]],
-    columnStyles:{0:{...rotulo,cellWidth:48},1:{cellWidth:47,halign:'right'},
-                  2:{...rotulo,cellWidth:48},3:{cellWidth:47,halign:'right'}}});
+  // ── Resultado y proceso, uno al lado del otro ───────────────────────────
+  const yPar=doc.lastAutoTable.finalY+3;
+  const parStyles={theme:'striped',margin:{left:M,right:M},
+                   styles:{fontSize:8,cellPadding:1.8,textColor:[30,30,30]},
+                   alternateRowStyles:{fillColor:[247,247,249]}};
+  doc.autoTable({...parStyles,startY:yPar,tableWidth:92,margin:{left:M},
+    head:[['Resultado','Valor']],
+    headStyles:{fillColor:ROJO,textColor:255,fontStyle:'bold'},
+    body:[['Valor factura',fmt(valorFactura())],
+          ['Gramos productivos',g(prod)],
+          ['Subtotal productivo',fmt(prod*cpg)],
+          ['Costo por gramo',fmt2(cpg)],
+          ['Total pérdida',g(perdida)],
+          ['Valor pérdida',fmt(perdida*cpg)],
+          ['Rendimiento',rend.toFixed(1)+'%']],
+    columnStyles:{0:{cellWidth:54},1:{cellWidth:38}}});
+  const yIzq=doc.lastAutoTable.finalY;
+  doc.autoTable({...parStyles,startY:yPar,tableWidth:92,margin:{left:108},
+    head:[['Proceso / Pérdida','Valor']],
+    headStyles:{fillColor:[125,18,32],textColor:255,fontStyle:'bold'},
+    body:[['Duración',$('t_dur').value||'—'],
+          ['# Operaciones',$('t_ops').value||'—'],
+          ['Gramos ingresados',g(gIni)],
+          ['Merma',g(merma)],
+          ['Desperdicio',g(desp)],
+          ['Dif. no identificada',g(difid)]],
+    columnStyles:{0:{cellWidth:54},1:{cellWidth:38}}});
+  const yBloque=Math.max(yIzq,doc.lastAutoTable.finalY);
 
   // ── Observaciones y firmas ──────────────────────────────────────────────
-  doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
+  doc.autoTable({...base,startY:yBloque+3,
     body:[['OBSERVACIONES:'],['']],
     columnStyles:{0:{cellWidth:190}},
     didParseCell:d=>{
