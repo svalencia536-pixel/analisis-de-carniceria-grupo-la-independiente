@@ -26,7 +26,12 @@ valor de la pérdida, y consolida todo por período.
 - Diferencia no identificada = gramos iniciales − productivos − merma − desperdicio
 - % Rendimiento = gramos finales ÷ gramos iniciales
 - % Pérdida = pérdida ÷ gramos iniciales
-- Valor de la pérdida = pérdida (g) × costo/gramo
+- Valor de la pérdida = pérdida (g) × costo/gramo **absorbido**.
+  DIVERGENCIA DELIBERADA (decidida por Sergio el 2026-08-03): las planillas de
+  Excel valoran la pérdida al precio de compra (precio kl ÷ 1000), lo que da una
+  cifra menor. El aplicativo usa el costo absorbido a propósito. Las planillas
+  son hojas de trabajo con fórmulas vivas, no la referencia a replicar en esto.
+  NO "corregir" para que coincida con el Excel.
 - Estado vs. estándar: verde si rendimiento ≥ rend. mínimo; amarillo si está
   hasta 3 puntos por debajo; rojo si cae más.
 
