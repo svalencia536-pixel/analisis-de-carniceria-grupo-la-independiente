@@ -1030,17 +1030,19 @@ function analisisActualPDF(doc){
   // ── Lo que salió porcionado ─────────────────────────────────────────────
   const cortes=filas.filter(f=>f.nombre).map(f=>{
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
-    return [f.nombre,ng(peso),ng(cant),ng(peso*cant)];
+    return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt(cpg*peso),fmt(cpg*peso*cant)];
   });
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
-    head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS']],
+    styles:{...base.styles,fontSize:7.5},
+    head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL']],
     headStyles:cabecera,
-    body:cortes.length?cortes:[['—','','','']],
-    foot:[['','','TOTALES',ng(prod)]],
+    body:cortes.length?cortes:[['—','','','','','']],
+    foot:[['','','TOTALES',ng(prod),'',fmt(prod*cpg)]],
     footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
                 lineColor:[190,190,195],lineWidth:.1},
-    columnStyles:{0:{cellWidth:76},1:{cellWidth:38,halign:'right'},
-                  2:{cellWidth:38,halign:'right'},3:{cellWidth:38,halign:'right'}}});
+    columnStyles:{0:{cellWidth:56},1:{cellWidth:22,halign:'right'},
+                  2:{cellWidth:25,halign:'right'},3:{cellWidth:25,halign:'right'},
+                  4:{cellWidth:31,halign:'right'},5:{cellWidth:31,halign:'right'}}});
 
   // ── Pérdidas y cierre en gramos ─────────────────────────────────────────
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
