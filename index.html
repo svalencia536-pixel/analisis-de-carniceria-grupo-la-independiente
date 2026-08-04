@@ -1096,8 +1096,7 @@ function analisisActualPDF(doc){
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
     return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt(cpg*peso),fmt(cpg*peso*cant)];
   });
-  // Renglones en blanco para anotar a mano, como en la planilla.
-  while(cortes.length<6) cortes.push(['','','','','','']);
+  if(!cortes.length) cortes.push(['—','','','','','']);
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
     styles:{...base.styles,fontSize:7.5},
     head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL']],
