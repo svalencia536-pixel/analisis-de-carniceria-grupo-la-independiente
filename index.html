@@ -500,7 +500,7 @@
 <script>
 let restaurantes=["Rojo Madrid","Gigi","Kinto Elemento","Palo de Mango","Lola","Zaitún"];
 // Listas gestionables desde la pestaña Configuración
-let personas=["JAIVER JIMENEZ"];
+let personas=["ARLINTON","MARISELA BROCHERO","NOE GARCIA","YAISI","YAMELIS"];
 let proveedores=["LA PARISIENNE"];
 
 /* Logos de las marcas, incrustados para que el archivo siga siendo autonomo.
@@ -570,9 +570,11 @@ function tab(id,btn){document.querySelectorAll('.tab').forEach(t=>t.classList.re
 
 /* ===== Persistencia local (guarda en el dispositivo) ===== */
 const LS_KEY='porcionamiento_la_independiente_v1';
-// Al publicar un catálogo/estándares nuevos se sube CAT_VER: lo guardado con una
-// versión anterior se descarta para que no pise los datos nuevos del código.
-const CAT_VER=2;
+// Al publicar un catálogo, estándares o personal nuevos se sube CAT_VER: lo
+// guardado con una versión anterior se descarta para que no pise los datos
+// nuevos del código. Los análisis del usuario nunca se pierden; lo que se
+// descarta son las ediciones a esas tres listas.
+const CAT_VER=3;
 let _lsDisponible=true;
 function persistir(){
   if(!_lsDisponible)return;
@@ -591,10 +593,10 @@ function cargarEstado(){
     const d=JSON.parse(raw);
     if(Array.isArray(d.analisis))analisis=d.analisis;
     if(typeof d.aId==='number')aId=d.aId;
-    if(Array.isArray(d.personas)&&d.personas.length)personas=d.personas;
     if(Array.isArray(d.proveedores)&&d.proveedores.length)proveedores=d.proveedores;
     if(Array.isArray(d.restaurantes)&&d.restaurantes.length)restaurantes=d.restaurantes;
     if(d.catVer===CAT_VER){
+      if(Array.isArray(d.personas)&&d.personas.length)personas=d.personas;
       if(Array.isArray(d.estandares)&&d.estandares.length)estandares=d.estandares;
       if(d.catalogo&&typeof d.catalogo==='object'&&Object.keys(d.catalogo).length)catalogo=d.catalogo;
     }
