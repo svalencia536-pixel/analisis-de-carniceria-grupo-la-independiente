@@ -235,7 +235,7 @@
   </div>
 
   <div id="a_analisis-actions" class="card no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <button class="btn" style="width:auto;margin:0;flex:1;min-width:160px" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn" style="width:auto;margin:0;flex:1;min-width:160px" onclick="imprimirAnalisis()">🖨️ Imprimir / Guardar PDF</button>
     <button class="btn sec" style="width:auto;margin:0;flex:1;min-width:160px" onclick="descargarPDFanalisis()">📄 Descargar PDF</button>
     <button class="btn gris" style="width:auto;margin:0;flex:1;min-width:160px" onclick="compartirAnalisis()">📤 Compartir</button>
   </div>
@@ -679,29 +679,44 @@ function onProtSel(){
     filas.push({nombre:'',peso:'',cant:'',auto:false});
     filas.push({nombre:'',peso:'',cant:'',auto:false});
   }
+  renderFilas();
   recalc();
 }
 
-function addFila(manual){filas.push({nombre:'',peso:'',cant:'',auto:!manual});renderFilas();}
+function addFila(manual){filas.push({nombre:'',peso:'',cant:'',auto:!manual});renderFilas();recalc();}
+
+/* renderFilas() rehace la tabla entera y solo debe llamarse cuando cambia el
+   número de filas. Si se llamaba en cada tecla, el navegador destruía el campo
+   que estabas escribiendo y perdías el foco tras el primer carácter: por eso
+   los recálculos van por refrescarCalculos(), que no toca los inputs. */
 function renderFilas(){
   const tb=$('t_porc').querySelector('tbody');
   if(!filas.length){tb.innerHTML=`<tr><td colspan="7" class="empty">Selecciona una proteína para cargar sus cortes</td></tr>`;return;}
-  const cpg=costoPorGramo();
   tb.innerHTML=filas.map((f,i)=>{
-    const gramos=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);
-    const costoUnd=cpg*(parseFloat(f.peso)||0);
-    const costoTot=costoUnd*(parseFloat(f.cant)||0);
     const tag=f.auto?'<span class="tag-auto">auto</span>':'<span class="tag-man">manual</span>';
     return `<tr>
       <td><input value="${f.nombre}" oninput="upd(${i},'nombre',this.value)" placeholder="Corte...">${tag}</td>
       <td><input type="number" value="${f.peso}" oninput="upd(${i},'peso',this.value)" style="width:70px"></td>
       <td><input type="number" value="${f.cant}" oninput="upd(${i},'cant',this.value)" style="width:70px"></td>
-      <td>${g(gramos)}</td><td>${fmt(costoUnd)}</td><td>${fmt(costoTot)}</td>
+      <td class="c-gr"></td><td class="c-cu"></td><td class="c-ct"></td>
       <td><button class="del" onclick="delFila(${i})">✕</button></td></tr>`;
   }).join('');
+  refrescarCalculos();
+}
+function refrescarCalculos(){
+  const cpg=costoPorGramo();
+  const filasHTML=$('t_porc').querySelectorAll('tbody tr');
+  filasHTML.forEach((tr,i)=>{
+    const f=filas[i], celda=tr.querySelector('.c-gr');
+    if(!f||!celda)return;
+    const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
+    celda.textContent=g(peso*cant);
+    tr.querySelector('.c-cu').textContent=fmt(cpg*peso);
+    tr.querySelector('.c-ct').textContent=fmt(cpg*peso*cant);
+  });
 }
 function upd(i,k,v){filas[i][k]=v;recalc();}
-function delFila(i){filas.splice(i,1);recalc();}
+function delFila(i){filas.splice(i,1);renderFilas();recalc();}
 
 function gramosPorcionados(){return filas.reduce((s,f)=>s+(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0),0);}
 function valorFactura(){return (parseFloat($('a_precio').value)||0)*(parseFloat($('a_kl').value)||0);}
@@ -771,7 +786,7 @@ function recalc(){
   $('r_rend').style.color=st?(rend>=st.rendMin?'var(--verde)':rend>=st.rendMin-3?'var(--amar)':'var(--alert)'):'var(--txt)';
   conciliar(prod,cpg);
   calcHoras();
-  renderFilas();
+  refrescarCalculos();
 }
 
 function guardarAnalisis(){
@@ -1126,18 +1141,43 @@ function analisisActualPDF(doc){
   doc.setFontSize(7);doc.setTextColor(120);
   doc.text('Generado: '+new Date().toLocaleString('es-CO'),M,291);
 }
-function descargarPDFanalisis(){
-  if(!$('a_prot').value){avisarFalta();return;}
+/* Imprimir, descargar y compartir producen EL MISMO reporte: los tres arman
+   este documento. Antes "Imprimir" mandaba la pantalla a la impresora y salía
+   distinto al PDF. */
+function reporteAnalisis(){
   const {jsPDF}=window.jspdf;const doc=new jsPDF();
   analisisActualPDF(doc);
-  entregarArchivo(doc.output('blob'),'Análisis Porcionamiento '+$('a_prot').value+'.pdf','PDF 📄');
+  return doc;
+}
+const nombreReporte=()=>'Análisis Porcionamiento '+$('a_prot').value+'.pdf';
+
+function descargarPDFanalisis(){
+  if(!$('a_prot').value){avisarFalta();return;}
+  entregarArchivo(reporteAnalisis().output('blob'),nombreReporte(),'PDF 📄');
+}
+
+function imprimirAnalisis(){
+  if(!$('a_prot').value){avisarFalta();return;}
+  const doc=reporteAnalisis();
+  doc.autoPrint();                       // el visor abre el diálogo de impresión solo
+  const blob=doc.output('blob');
+  if(embebido()){ entregarArchivo(blob,nombreReporte(),'PDF 📄'); return; }
+  const url=URL.createObjectURL(blob);
+  const marco=document.createElement('iframe');
+  marco.style.cssText='position:fixed;width:0;height:0;border:0;left:-9999px';
+  marco.src=url;
+  marco.onload=()=>{
+    try{ marco.contentWindow.focus(); marco.contentWindow.print(); }
+    catch(e){ window.open(url,'_blank'); }   // algunos navegadores no dejan imprimir el marco
+  };
+  document.body.appendChild(marco);
+  toast('Preparando la impresión…');
+  setTimeout(()=>{ marco.remove(); URL.revokeObjectURL(url); },120000);
 }
 async function compartirAnalisis(){
   if(!$('a_prot').value){avisarFalta();return;}
-  const {jsPDF}=window.jspdf;const doc=new jsPDF();
-  analisisActualPDF(doc);
-  const blob=doc.output('blob');
-  const nombre='Análisis Porcionamiento '+$('a_prot').value+'.pdf';
+  const blob=reporteAnalisis().output('blob');
+  const nombre=nombreReporte();
   const file=new File([blob],nombre,{type:'application/pdf'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
     try{ await navigator.share({files:[file],title:'Análisis de Porcionamiento',text:'Grupo La Independiente'}); return; }
