@@ -60,11 +60,16 @@ Menú lateral izquierdo (en móvil pasa arriba):
 - `catalogo` (objeto JS): 29 proteínas / 93 cortes, extraídos de las planillas
   reales de GIGI, KINTO y LOLA (2026). Peso 1 = corte que se registra en gramos
   sueltos (recortes, insumos para sushi/cevichería).
-- `CAT_VER` (hoy 3): versión de `catalogo`, `estandares` y `personas`. Al
-  publicar datos nuevos hay que subirla; lo guardado en localStorage con una
-  versión anterior se descarta para que no pise al código. Los análisis del
-  usuario NO se pierden, pero sí las ediciones a esas tres listas.
+- `CAT_VER` (hoy 4): versión de `catalogo`, `estandares`, `personas` y
+  `proveedores`. Al publicar datos nuevos hay que subirla; lo guardado en
+  localStorage con una versión anterior se descarta para que no pise al código.
+  Los análisis del usuario NO se pierden, pero sí las ediciones a esas listas.
 - `personas`: personal de corte real del grupo (5). Aparecen en "Elaborado por".
+- `proveedores`: 15, consolidados de las planillas de KINTO, LOLA y GIGI
+  (hoja "Hoja3" = producto→proveedor, columna Proveedor de "PORCIONAMIENTOS" y
+  el campo "PROVEEDOR / FACTURA :" de las hojas de análisis). Se unificaron
+  variantes del mismo nombre: ATLANTIC = ATLANTIC FS S.A.S., CASTROMAR =
+  CASTROMAR ALIMENTOS S.A.S., LA FAENA = LA FAENA ALIMENTOS S.A.S.
 - `estandares` (array): 10 productos con desperdicio/merma/no identificada.
   Los nombres deben coincidir exactamente con las claves de `catalogo`.
 - `personas`, `proveedores`, `restaurantes`: listas iniciales mínimas, se editan
@@ -80,9 +85,9 @@ Menú lateral izquierdo (en móvil pasa arriba):
 2. ~~Ajustar matriz de cortes~~ ✅ HECHO (2026-08-03) con las planillas reales de
    GIGI, KINTO y LOLA. Falta cruzar con las planillas de los otros puntos
    (Palo de Mango, Zaitún, Rojo Madrid) cuando Sergio las comparta.
-3. Personal de corte ✅ HECHO (2026-08-03): ARLINTON, MARISELA BROCHERO,
-   NOE GARCIA, YAISI, YAMELIS. Falta la **lista real de proveedores**; por
-   ahora solo está LA PARISIENNE y se edita en Configuración.
+3. ~~Listas reales~~ ✅ HECHO (2026-08-03). Personal de corte: ARLINTON,
+   MARISELA BROCHERO, NOE GARCIA, YAISI, YAMELIS. Proveedores: 15 consolidados
+   de las planillas. Ambas se siguen editando en Configuración.
 4. Revisar si el "Anexo Informe.xlsx" (correo de Miguel Pereira) tiene una
    estructura de consolidado distinta a replicar.
 
