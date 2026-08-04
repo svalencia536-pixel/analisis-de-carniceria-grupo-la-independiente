@@ -263,9 +263,9 @@
 <div id="standar" class="tab">
   <div class="card">
     <h2>📏 Niveles aceptables de pérdida por producto</h2>
-    <p class="mini" style="margin-bottom:10px">Si el rendimiento cae por debajo del mínimo, el análisis se marca en rojo.</p>
+    <p class="mini" style="margin-bottom:10px">Si el rendimiento cae por debajo del mínimo, el análisis se marca en rojo. El producto se elige de la lista para que el estándar quede amarrado a la proteína: si el nombre no coincide exacto, nunca se aplicaría.</p>
     <div class="grid4" style="align-items:end">
-      <div><label>Producto</label><input id="s_prod" placeholder="LOMO FINO"></div>
+      <div><label>Producto</label><select id="s_prod"></select></div>
       <div><label>Desperdicio %</label><input type="number" id="s_desp" placeholder="11"></div>
       <div><label>Merma %</label><input type="number" id="s_merma" placeholder="4"></div>
       <div><label>No identif. %</label><input type="number" id="s_noid" placeholder="1"></div>
@@ -668,6 +668,7 @@ function fillSelects(){
   $('a_prot').innerHTML='<option value="">— Selecciona —</option>'+prots.map(p=>`<option>${p}</option>`).join('');
   $('c_rest').innerHTML='<option value="">Todos</option>'+restaurantes.map(r=>`<option>${r}</option>`).join('');
   $('mx_prot').innerHTML=prots.map(p=>`<option>${p}</option>`).join('');
+  $('s_prod').innerHTML='<option value="">— Selecciona —</option>'+prots.map(p=>`<option>${p}</option>`).join('');
 }
 
 function onProtSel(){
@@ -853,21 +854,33 @@ function delAn(id){analisis=analisis.filter(a=>a.id!==id);renderCons();pintarCon
 
 function addStd(){
   const p=$('s_prod').value.trim().toUpperCase();
-  if(!p){toast('Ingresa el producto');return;}
+  if(!p){toast('Elige el producto de la lista');$('s_prod').focus();return;}
   const o={prod:p,desp:parseFloat($('s_desp').value)||0,merma:parseFloat($('s_merma').value)||0,noid:parseFloat($('s_noid').value)||0};
   const i=estandares.findIndex(x=>x.prod===p);
-  if(i>=0)estandares[i]=o;else estandares.push(o);
+  const actualiza=i>=0;
+  if(actualiza)estandares[i]=o;else estandares.push(o);
   ['s_prod','s_desp','s_merma','s_noid'].forEach(x=>$(x).value='');
-  renderStd();persistir();toast('Estándar guardado ✅');
+  renderStd();persistir();
+  recalc();   // si hay un análisis en curso, su semáforo se actualiza al instante
+  toast(`Estándar ${actualiza?'actualizado':'guardado'}: ${p} · rend. mín ${100-(o.desp+o.merma+o.noid)}% ✅`);
 }
-function delStd(p){estandares=estandares.filter(x=>x.prod!==p);renderStd();persistir();}
+// Por índice: los nombres con comillas o acentos rompían el onclick.
+function delStd(i){estandares.splice(i,1);renderStd();persistir();recalc();}
 function renderStd(){
   const tb=$('t_std').querySelector('tbody');
-  tb.innerHTML=estandares.map(s=>{
+  if(!estandares.length){
+    tb.innerHTML=`<tr><td colspan="7" class="empty">Sin estándares registrados</td></tr>`;return;
+  }
+  const prots=Object.keys(catalogo).map(p=>p.toUpperCase());
+  tb.innerHTML=estandares.map((s,i)=>{
     const pm=s.desp+s.merma+s.noid;
-    return `<tr><td>${s.prod}</td><td>${s.desp}%</td><td>${s.merma}%</td><td>${s.noid}%</td>
+    // Un estándar cuyo producto ya no existe en el catálogo nunca se aplica:
+    // se marca para que no parezca que "no funciona".
+    const huerfano=!prots.includes((s.prod||'').toUpperCase());
+    const aviso=huerfano?' <span class="pill r" title="Ningún producto del catálogo se llama así, por eso este estándar no se aplica">sin proteína</span>':'';
+    return `<tr><td>${s.prod}${aviso}</td><td>${s.desp}%</td><td>${s.merma}%</td><td>${s.noid}%</td>
       <td>${pm}%</td><td><b>${100-pm}%</b></td>
-      <td><button class="del" onclick="delStd('${s.prod}')">✕</button></td></tr>`;
+      <td><button class="del" onclick="delStd(${i})">✕</button></td></tr>`;
   }).join('');
 }
 
