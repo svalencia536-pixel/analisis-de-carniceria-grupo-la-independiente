@@ -1061,7 +1061,8 @@ function analisisActualPDF(doc){
           ['Costo por gramo',fmt2(cpg)],
           ['Total pérdida',g(perdida)],
           ['Valor pérdida',fmt(perdida*cpg)],
-          ['Rendimiento',rend.toFixed(1)+'%']],
+          ['Rendimiento',rend.toFixed(1)+'%'],
+          ['% Pérdida',pperd.toFixed(1)+'%']],
     columnStyles:{0:{cellWidth:54},1:{cellWidth:38}}});
   const yIzq=doc.lastAutoTable.finalY;
   doc.autoTable({...parStyles,startY:yPar,tableWidth:92,margin:{left:108},
