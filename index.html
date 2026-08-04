@@ -852,6 +852,10 @@ function renderCons(){
 }
 function delAn(id){analisis=analisis.filter(a=>a.id!==id);renderCons();pintarConsecutivo();persistir();}
 
+// 'es' para que la Ñ quede donde debe: ENTRAÑA antes que ENTRAR.
+function ordenarEstandares(){
+  estandares.sort((a,b)=>(a.prod||'').localeCompare(b.prod||'','es'));
+}
 function addStd(){
   const p=$('s_prod').value.trim().toUpperCase();
   if(!p){toast('Elige el producto de la lista');$('s_prod').focus();return;}
@@ -859,6 +863,7 @@ function addStd(){
   const i=estandares.findIndex(x=>x.prod===p);
   const actualiza=i>=0;
   if(actualiza)estandares[i]=o;else estandares.push(o);
+  ordenarEstandares();
   ['s_prod','s_desp','s_merma','s_noid'].forEach(x=>$(x).value='');
   renderStd();persistir();
   recalc();   // si hay un análisis en curso, su semáforo se actualiza al instante
@@ -1200,6 +1205,7 @@ async function compartirAnalisis(){
 }
 
 cargarEstado();
+ordenarEstandares();
 $('a_fecha').value=new Date().toISOString().slice(0,10);
 fillSelects();renderStd();renderFilas();renderMatriz();renderConfig();pintarConsecutivo();recalc();
 </script>
