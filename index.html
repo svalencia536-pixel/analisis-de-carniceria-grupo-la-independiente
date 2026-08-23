@@ -294,6 +294,15 @@
     </div>
     <button class="btn sec" onclick="addCorteCat()">➕ Agregar corte al catálogo</button>
   </div>
+
+  <div class="card">
+    <h2>🆕 Crear una proteína nueva</h2>
+    <p class="mini" style="margin-bottom:10px">Queda disponible en "Nuevo análisis" y en Estándares. Después le agregas sus cortes arriba. Para los recortes que se pesan sueltos, usa peso <b>1</b> y escribe el gramaje en la cantidad.</p>
+    <div class="btn-row" style="grid-template-columns:2fr 1fr">
+      <input id="mx_nueva" placeholder="Nombre de la proteína" onkeydown="if(event.key==='Enter')addProteina()">
+      <button class="btn sec" style="margin-top:0" onclick="addProteina()">➕ Crear proteína</button>
+    </div>
+  </div>
   <div class="card">
     <h2>Cortes de <span id="mx_titulo"></span></h2>
     <div class="tbl-scroll">
@@ -546,7 +555,13 @@ let catalogo={
  "PULPO BABY":[["PULPO X 100",100],["CABEZA",1]],
  "RABO":[["RABO CON HUESO X 100 GR",100],["RABO X 70 GR",70],["RECORTE",1]],
  "TENTACULO DE CALAMAR":[["FILETE DE TENTACULO COCIDO",1],["TENTACULO COCIDO",1],["TENTACULO DE CALAMAR COCIDO",1]],
- "TUBO DE CALAMAR":[["TUBO CALAMAR",250],["RECORTE DE TUBO DE CALAMAR",1]]
+ "TUBO DE CALAMAR":[["TUBO CALAMAR",250],["RECORTE DE TUBO DE CALAMAR",1]],
+ // Pedidas por Sergio el 2026-08-03. Solo llevan el recorte, que se pesa suelto:
+ // los pesos de sus porciones salen de las planillas de Palo de Mango y Zaitún,
+ // o se agregan desde "Matriz cortes". No inventar gramajes.
+ "MORRO":[["RECORTE DE MORRO",1]],
+ "COLA DE LANGOSTA":[["RECORTE DE COLA DE LANGOSTA",1]],
+ "ESPALDILLA":[["RECORTE DE ESPALDILLA",1]]
 };
 
 let estandares=[
@@ -574,7 +589,7 @@ const LS_KEY='porcionamiento_la_independiente_v1';
 // CAT_VER: lo guardado con una versión anterior se descarta para que no pise
 // los datos nuevos del código. Los análisis del usuario nunca se pierden; lo
 // que se descarta son las ediciones a esas cuatro listas.
-const CAT_VER=4;
+const CAT_VER=5;
 let _lsDisponible=true;
 function persistir(){
   if(!_lsDisponible)return;
@@ -599,6 +614,13 @@ function cargarEstado(){
       if(Array.isArray(d.proveedores)&&d.proveedores.length)proveedores=d.proveedores;
       if(Array.isArray(d.estandares)&&d.estandares.length)estandares=d.estandares;
       if(d.catalogo&&typeof d.catalogo==='object'&&Object.keys(d.catalogo).length)catalogo=d.catalogo;
+    }else if(d.catalogo&&typeof d.catalogo==='object'){
+      // Versión anterior: manda el catálogo del código, pero se conservan las
+      // proteínas que el usuario creó y que el código todavía no trae. Sin esto,
+      // cada actualización le borraría su trabajo.
+      Object.entries(d.catalogo).forEach(([prot,cortes])=>{
+        if(!catalogo[prot]&&Array.isArray(cortes))catalogo[prot]=cortes;
+      });
     }
   }catch(e){ /* datos corruptos: se ignoran */ }
 }
@@ -908,6 +930,22 @@ function addCorteCat(){
   renderMatriz();persistir();toast('Corte agregado al catálogo ✅');
 }
 function delCorteCat(i){const p=$('mx_prot').value;catalogo[p].splice(i,1);renderMatriz();persistir();}
+
+function addProteina(){
+  const nom=$('mx_nueva').value.trim().toUpperCase();
+  if(!nom){toast('Escribe el nombre de la proteína');$('mx_nueva').focus();return;}
+  if(catalogo[nom]){
+    toast('Esa proteína ya existe');
+    $('mx_prot').value=nom; renderMatriz(); return;
+  }
+  catalogo[nom]=[];
+  $('mx_nueva').value='';
+  fillSelects();
+  $('mx_prot').value=nom;      // queda seleccionada para agregarle los cortes
+  renderMatriz(); persistir();
+  toast(`Proteína ${nom} creada ✅ Agrégale sus cortes`);
+  $('mx_corte').focus();
+}
 
 function renderPanel(){
   const n=analisis.length;
