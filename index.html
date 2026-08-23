@@ -287,11 +287,16 @@
   <div class="card">
     <h2>🧩 Matriz de cortes por proteína</h2>
     <p class="mini" style="margin-bottom:10px">Catálogo de cortes que se auto-cargan al seleccionar cada proteína. Puedes editarlo.</p>
-    <div class="grid3" style="align-items:end">
+    <div class="grid4" style="align-items:end">
       <div><label>Proteína</label><select id="mx_prot" onchange="renderMatriz()"></select></div>
       <div><label>Nombre del corte</label><input id="mx_corte" placeholder="LOMO FINO X 200 GR"></div>
+      <div><label>Tipo</label><select id="mx_tipo" onchange="onTipoCorte()">
+        <option value="porcion">Porción</option>
+        <option value="sub">Subproducto</option>
+      </select></div>
       <div><label>Peso (g)</label><input type="number" id="mx_peso" placeholder="200"></div>
     </div>
+    <p class="mini" style="margin-top:8px"><b>Porción</b>: sale un número fijo de unidades de ese peso. <b>Subproducto</b>: recortes, huesos, cabezas y demás que se pesan sueltos — el peso queda en 1 y el gramaje se escribe en la cantidad al hacer el análisis.</p>
     <button class="btn sec" onclick="addCorteCat()">➕ Agregar corte al catálogo</button>
   </div>
 
@@ -306,7 +311,7 @@
   <div class="card">
     <h2>Cortes de <span id="mx_titulo"></span></h2>
     <div class="tbl-scroll">
-      <table id="t_mx"><thead><tr><th>Corte</th><th>Peso (g)</th><th></th></tr></thead><tbody></tbody></table>
+      <table id="t_mx"><thead><tr><th>Corte</th><th>Tipo</th><th>Peso (g)</th><th></th></tr></thead><tbody></tbody></table>
     </div>
   </div>
 </div>
@@ -913,21 +918,37 @@ function renderStd(){
   }).join('');
 }
 
+// Un corte de peso 1 no es una porción: es un subproducto que se pesa suelto.
+// Esa convención venía de las planillas del grupo y aquí se hace explícita.
+const esSubproducto=peso=>(parseFloat(peso)||0)===1;
+
+function onTipoCorte(){
+  const sub=$('mx_tipo').value==='sub', peso=$('mx_peso');
+  peso.readOnly=sub;
+  peso.value=sub?1:'';
+  peso.placeholder=sub?'se pesa suelto':'200';
+}
 function renderMatriz(){
   const p=$('mx_prot').value;
   $('mx_titulo').textContent=p||'';
   const tb=$('t_mx').querySelector('tbody');
   const cortes=catalogo[p]||[];
   tb.innerHTML=cortes.length?cortes.map((c,i)=>`<tr>
-    <td>${c[0]}</td><td>${c[1]} g</td>
-    <td><button class="del" onclick="delCorteCat(${i})">✕</button></td></tr>`).join(''):`<tr><td colspan="3" class="empty">Sin cortes</td></tr>`;
+    <td>${c[0]}</td>
+    <td>${esSubproducto(c[1])?'<span class="tag-man">subproducto</span>':'<span class="tag-auto">porción</span>'}</td>
+    <td>${esSubproducto(c[1])?'suelto':c[1]+' g'}</td>
+    <td><button class="del" onclick="delCorteCat(${i})">✕</button></td></tr>`).join(''):`<tr><td colspan="4" class="empty">Sin cortes</td></tr>`;
 }
 function addCorteCat(){
-  const p=$('mx_prot').value, nom=$('mx_corte').value.trim(), peso=parseFloat($('mx_peso').value);
-  if(!p||!nom||isNaN(peso)){toast('Completa proteína, corte y peso');return;}
+  const p=$('mx_prot').value, nom=$('mx_corte').value.trim();
+  const peso=$('mx_tipo').value==='sub'?1:parseFloat($('mx_peso').value);
+  if(!p||!nom||isNaN(peso)||peso<=0){toast('Completa proteína, corte y peso');return;}
+  if((catalogo[p]||[]).some(c=>c[0]===nom.toUpperCase())){toast('Ese corte ya existe en la proteína');return;}
   catalogo[p].push([nom.toUpperCase(),peso]);
-  $('mx_corte').value='';$('mx_peso').value='';
-  renderMatriz();persistir();toast('Corte agregado al catálogo ✅');
+  $('mx_corte').value='';$('mx_peso').value=$('mx_tipo').value==='sub'?1:'';
+  renderMatriz();persistir();
+  toast(`Corte agregado a ${p} ✅`);
+  $('mx_corte').focus();
 }
 function delCorteCat(i){const p=$('mx_prot').value;catalogo[p].splice(i,1);renderMatriz();persistir();}
 
@@ -986,7 +1007,29 @@ function avisarFalta(){
   setTimeout(()=>{s.style.boxShadow='';},2000);
 }
 
-function entregarArchivo(blob,nombre,etiqueta){
+async function entregarArchivo(blob,nombre,etiqueta){
+  // Dentro del visor de Claude ni el enlace de descarga ni abrir una pestaña
+  // funcionan: hay que pedirle el guardado al visor, que muestra su propia
+  // confirmación. Fuera de él (web, archivo local) se descarga normal.
+  if(window.claude&&typeof window.claude.use==='function'){
+    try{
+      const descargas=await window.claude.use('downloads');
+      if(descargas){
+        await descargas.save({filename:nombre,data:blob});
+        toast(etiqueta+' guardado');
+        return;
+      }
+    }catch(e){
+      const cod=e&&e.code;
+      if(cod==='declined')return;                       // el usuario dijo que no
+      if(cod==='rejected_extension'||cod==='extension_not_enabled'){
+        toast('Este visor no permite guardar archivos '+(nombre.split('.').pop()||'').toUpperCase()+'. Ábrelo en la web.');
+        return;
+      }
+      if(cod==='rate_limited'){toast('Espera un momento y vuelve a intentarlo');return;}
+      // cualquier otra cosa: se intenta la vía normal
+    }
+  }
   const url=URL.createObjectURL(blob);
   const limpiar=()=>setTimeout(()=>URL.revokeObjectURL(url),60000);
   if(embebido()){
