@@ -32,6 +32,12 @@ valor de la pérdida, y consolida todo por período.
   cifra menor. El aplicativo usa el costo absorbido a propósito. Las planillas
   son hojas de trabajo con fórmulas vivas, no la referencia a replicar en esto.
   NO "corregir" para que coincida con el Excel.
+- **Cortes de costo fijo** (constante `COSTO_FIJO`, decidido por Sergio el
+  2026-09-14): RECORTE DE PULPO y RECORTE Y CABEZA DE PULPO cuestan $1 fijo
+  (unidad y total). Siguen contando en gramos porcionados, rendimiento y
+  participación, pero no absorben factura: costo/gramo = (valor factura −
+  costos fijos) ÷ (gramos porcionados − gramos de costo fijo), y el subtotal
+  productivo es la suma de los costos por corte. Solo aplica a esos dos.
 - Estado vs. estándar: verde si rendimiento ≥ rend. mínimo; amarillo si está
   hasta 3 puntos por debajo; rojo si cae más.
 

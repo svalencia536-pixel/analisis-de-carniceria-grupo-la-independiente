@@ -724,7 +724,8 @@ function renderFilas(){
   const tb=$('t_porc').querySelector('tbody');
   if(!filas.length){tb.innerHTML=`<tr><td colspan="8" class="empty">Selecciona una proteína para cargar sus cortes</td></tr>`;refrescarCalculos();return;}
   tb.innerHTML=filas.map((f,i)=>{
-    const tag=f.auto?'<span class="tag-auto">auto</span>':'<span class="tag-man">manual</span>';
+    const tag=(f.auto?'<span class="tag-auto">auto</span>':'<span class="tag-man">manual</span>')+
+      (costoFijoDe(f.nombre)!=null?' <span class="tag-man" title="Se registra por control; el valor lo absorben los demás cortes">costo fijo $1</span>':'');
     return `<tr>
       <td><input value="${f.nombre}" oninput="upd(${i},'nombre',this.value)" placeholder="Corte...">${tag}</td>
       <td><input type="number" value="${f.peso}" oninput="upd(${i},'peso',this.value)" style="width:70px"></td>
@@ -744,8 +745,8 @@ function refrescarCalculos(){
     if(!f||!celda)return;
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
     celda.textContent=g(peso*cant);
-    tr.querySelector('.c-cu').textContent=fmt2(cpg*peso);
-    tr.querySelector('.c-ct').textContent=fmt2(cpg*peso*cant);
+    tr.querySelector('.c-cu').textContent=fmt2(costoUndCorte(f,cpg));
+    tr.querySelector('.c-ct').textContent=fmt2(costoTotCorte(f,cpg));
     tr.querySelector('.c-pc').textContent=pctIni(peso*cant);
   });
   pintarCuadre();
@@ -772,7 +773,27 @@ function delFila(i){filas.splice(i,1);renderFilas();recalc();}
 function gramosPorcionados(){return filas.reduce((s,f)=>s+(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0),0);}
 function valorFactura(){return (parseFloat($('a_precio').value)||0)*(parseFloat($('a_kl').value)||0);}
 function gramosIniciales(){return (parseFloat($('a_kl').value)||0)*1000;}
-function costoPorGramo(){const prod=gramosPorcionados();return prod>0?valorFactura()/prod:0;}
+
+/* Cortes de costo fijo (pedido de Sergio, 2026-09-14). Se registran en gramos
+   por control y cuentan en rendimiento y participación, pero su costo es
+   simbólico: el valor de la factura lo absorben los demás cortes. Hoy aplica
+   solo a los dos subproductos del pulpo. */
+const COSTO_FIJO={'RECORTE DE PULPO':1,'RECORTE Y CABEZA DE PULPO':1};
+const costoFijoDe=nombre=>COSTO_FIJO[(nombre||'').trim().toUpperCase()];
+const grDe=f=>(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);
+
+// Costo por gramo de los cortes que absorben la factura.
+function cpgDe(lista,vf){
+  let gFijo=0,vFijo=0,prod=0;
+  lista.forEach(f=>{const gr=grDe(f);prod+=gr;const cf=costoFijoDe(f.nombre);if(cf!=null&&gr>0){gFijo+=gr;vFijo+=cf;}});
+  const gAbs=prod-gFijo;
+  return gAbs>0?Math.max(vf-vFijo,0)/gAbs:0;
+}
+function costoPorGramo(){return cpgDe(filas,valorFactura());}
+function costoUndCorte(f,cpg){const cf=costoFijoDe(f.nombre);return cf!=null?cf:cpg*(parseFloat(f.peso)||0);}
+function costoTotCorte(f,cpg){const cf=costoFijoDe(f.nombre);return cf!=null?(grDe(f)>0?cf:0):cpg*grDe(f);}
+// Lo que suman los cortes: con costo fijo ya no es gramos × costo por gramo.
+function subtotalProductivo(lista,cpg){return lista.reduce((s,f)=>s+costoTotCorte(f,cpg),0);}
 
 function calcHoras(){
   const hi=$('t_hi').value, hf=$('t_hf').value;
@@ -790,7 +811,7 @@ function calcHoras(){
 
 function conciliar(prod,cpg){
   const vf=valorFactura();
-  const absorbido=prod*cpg;
+  const absorbido=subtotalProductivo(filas,cpg);
   const gIni=gramosIniciales();
   const difG=gIni-prod-(parseFloat($('a_merma').value)||0)-(parseFloat($('a_desp').value)||0);
   const box=$('c_concil');
@@ -820,7 +841,7 @@ function recalc(){
   const cpg=costoPorGramo();
   $('r_fac').textContent=fmt(valorFactura());
   $('r_prod').textContent=g(prod);
-  $('r_sub').textContent=fmt(prod*cpg);
+  $('r_sub').textContent=fmt(subtotalProductivo(filas,cpg));
   $('r_cpg').textContent=fmt2(cpg)+' /g';
   $('r_perd').textContent=g(perdida);
   $('r_costoperd').textContent=fmt(perdida*cpg);
@@ -859,7 +880,7 @@ function guardarAnalisis(){
     prov:$('a_prov').value,fact:$('a_fact').value,prod:$('a_prot').value,
     precio:parseFloat($('a_precio').value)||0,kl:parseFloat($('a_kl').value)||0,
     gIni,prodG:prod,merma,desp,difid,perdida,rend,cpg,valorFac:valorFactura(),
-    subtotal:prod*cpg,costoPerd:perdida*cpg,estado,
+    subtotal:subtotalProductivo(filas,cpg),costoPerd:perdida*cpg,estado,
     filas:JSON.parse(JSON.stringify(filas.filter(f=>f.nombre&&f.cant))),
     dur,ops:$('t_ops').value,hi,hf
   });
@@ -1113,7 +1134,7 @@ function exportXLSX(){
   const det=rows.map(a=>({Fecha:a.fecha,'Folio #':a.folio,'Producto a Porcionar':a.prod,Proveedor:a.prov,'# De Factura':a.fact,'Precio Compra':a.precio,'Cantidad Inicial (gr)':Math.round(a.gIni),'Cantidad Final (gr)':Math.round(a.prodG),'Pérdida (gr)':Math.round(a.perdida),'% Rendimiento':+(a.rend/100).toFixed(4),'% Pérdida':+((a.perdida/a.gIni)||0).toFixed(4),'Valor Factura ($)':Math.round(a.valorFac),'Costo x Gramo ($)':+a.cpg.toFixed(2),'Subtotal Productivo ($)':Math.round(a.subtotal),'Costo Pérdida ($)':Math.round(a.costoPerd),'Duración':a.dur,'# Operaciones':a.ops,Restaurante:a.rest,Estado:a.estado,Elaboró:a.elab}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(det),'Consolidado');
   const cortes=[];
-  rows.forEach(a=>{(a.filas||[]).forEach(f=>{const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);cortes.push({Fecha:a.fecha,Folio:a.folio,Producto:a.prod,Corte:f.nombre,'Peso (g)':f.peso,'Cantidad':f.cant,'Gramos':Math.round(gr),'Costo und':+(a.cpg*(parseFloat(f.peso)||0)).toFixed(2),'Costo total':Math.round(a.cpg*gr)});});});
+  rows.forEach(a=>{(a.filas||[]).forEach(f=>{const gr=(parseFloat(f.peso)||0)*(parseFloat(f.cant)||0);cortes.push({Fecha:a.fecha,Folio:a.folio,Producto:a.prod,Corte:f.nombre,'Peso (g)':f.peso,'Cantidad':f.cant,'Gramos':Math.round(gr),'Costo und':+costoUndCorte(f,a.cpg).toFixed(2),'Costo total':+costoTotCorte(f,a.cpg).toFixed(2)});});});
   if(cortes.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cortes),'Detalle cortes');
   const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
   const tipo='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -1197,7 +1218,7 @@ function analisisActualPDF(doc){
   // Solo los cortes que de verdad se porcionaron; los de cantidad 0 ensucian.
   const cortes=filas.filter(f=>f.nombre&&(parseFloat(f.cant)||0)>0).map(f=>{
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
-    return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt2(cpg*peso),fmt2(cpg*peso*cant),pct(peso*cant)];
+    return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt2(costoUndCorte(f,cpg)),fmt2(costoTotCorte(f,cpg)),pct(peso*cant)];
   });
   if(!cortes.length) cortes.push(['—','','','','','','']);
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
@@ -1205,7 +1226,7 @@ function analisisActualPDF(doc){
     head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL','% PARTICIP.']],
     headStyles:cabecera,
     body:cortes,
-    foot:[['','','TOTALES',ng(prod),'',fmt2(prod*cpg),pct(prod)]],
+    foot:[['','','TOTALES',ng(prod),'',fmt2(subtotalProductivo(filas,cpg)),pct(prod)]],
     footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
                 lineColor:[190,190,195],lineWidth:.1},
     columnStyles:{0:{cellWidth:48},1:{cellWidth:18,halign:'right'},
@@ -1223,7 +1244,7 @@ function analisisActualPDF(doc){
     headStyles:{fillColor:ROJO,textColor:255,fontStyle:'bold'},
     body:[['Valor factura',fmt(valorFactura())],
           ['Gramos productivos',g(prod)],
-          ['Subtotal productivo',fmt(prod*cpg)],
+          ['Subtotal productivo',fmt(subtotalProductivo(filas,cpg))],
           ['Costo por gramo',fmt2(cpg)],
           ['Total pérdida',g(perdida)],
           ['Valor pérdida',fmt(perdida*cpg)],
