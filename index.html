@@ -156,7 +156,7 @@
   <div style="font-size:12px">Análisis de Porcionamiento de Proteínas</div>
 </div>
 <div class="no-print" style="display:flex;justify-content:flex-end;margin-bottom:10px">
-  <button class="btn" style="width:auto;margin:0;padding:9px 16px;font-size:13px" onclick="window.print()">🖨️ Imprimir esta vista</button>
+  <button class="btn" style="width:auto;margin:0;padding:9px 16px;font-size:13px" onclick="imprimirVista()">🖨️ Imprimir esta vista</button>
 </div>
 
 <!-- ========= NUEVO ANALISIS ========= -->
@@ -187,9 +187,10 @@
     <p class="mini" style="margin-bottom:8px">Al elegir la proteína se cargan sus cortes típicos. Llena la cantidad porcionada de cada uno. Puedes agregar cortes manuales.</p>
     <div class="tbl-scroll">
       <table id="t_porc"><thead><tr>
-        <th style="min-width:170px">Corte / Porción</th><th>Peso (g)</th><th>Cant. porcionada</th><th>Gramos</th><th>Costo und</th><th>Costo total</th><th></th>
+        <th style="min-width:170px">Corte / Porción</th><th>Peso (g)</th><th>Cant. porcionada</th><th>Gramos</th><th>Costo und</th><th>Costo total</th><th>% Particip.</th><th></th>
       </tr></thead><tbody></tbody></table>
     </div>
+    <div id="cuadre" class="no-print" style="margin-top:10px;background:#faf7f8;border-radius:8px;padding:10px 12px;font-size:13px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center"></div>
     <button class="btn sec" onclick="addFila(true)">➕ Agregar corte manual</button>
   </div>
 
@@ -721,18 +722,20 @@ function addFila(manual){filas.push({nombre:'',peso:'',cant:'',auto:!manual});re
    los recálculos van por refrescarCalculos(), que no toca los inputs. */
 function renderFilas(){
   const tb=$('t_porc').querySelector('tbody');
-  if(!filas.length){tb.innerHTML=`<tr><td colspan="7" class="empty">Selecciona una proteína para cargar sus cortes</td></tr>`;return;}
+  if(!filas.length){tb.innerHTML=`<tr><td colspan="8" class="empty">Selecciona una proteína para cargar sus cortes</td></tr>`;refrescarCalculos();return;}
   tb.innerHTML=filas.map((f,i)=>{
     const tag=f.auto?'<span class="tag-auto">auto</span>':'<span class="tag-man">manual</span>';
     return `<tr>
       <td><input value="${f.nombre}" oninput="upd(${i},'nombre',this.value)" placeholder="Corte...">${tag}</td>
       <td><input type="number" value="${f.peso}" oninput="upd(${i},'peso',this.value)" style="width:70px"></td>
       <td><input type="number" value="${f.cant}" oninput="upd(${i},'cant',this.value)" style="width:70px"></td>
-      <td class="c-gr"></td><td class="c-cu"></td><td class="c-ct"></td>
+      <td class="c-gr"></td><td class="c-cu"></td><td class="c-ct"></td><td class="c-pc" style="font-weight:700"></td>
       <td><button class="del" onclick="delFila(${i})">✕</button></td></tr>`;
   }).join('');
   refrescarCalculos();
 }
+// Porcentaje sobre la cantidad inicial, formato 50,00%.
+const pctIni=gr=>{const ini=gramosIniciales();return (ini>0?gr/ini*100:0).toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';};
 function refrescarCalculos(){
   const cpg=costoPorGramo();
   const filasHTML=$('t_porc').querySelectorAll('tbody tr');
@@ -741,9 +744,27 @@ function refrescarCalculos(){
     if(!f||!celda)return;
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
     celda.textContent=g(peso*cant);
-    tr.querySelector('.c-cu').textContent=fmt(cpg*peso);
-    tr.querySelector('.c-ct').textContent=fmt(cpg*peso*cant);
+    tr.querySelector('.c-cu').textContent=fmt2(cpg*peso);
+    tr.querySelector('.c-ct').textContent=fmt2(cpg*peso*cant);
+    tr.querySelector('.c-pc').textContent=pctIni(peso*cant);
   });
+  pintarCuadre();
+}
+/* Cuadre: lo porcionado más cada pérdida debe dar 100% de lo que entró.
+   Solo en pantalla, para corregir el pesaje antes de guardar. */
+function pintarCuadre(){
+  const box=$('cuadre'); if(!box)return;
+  const ini=gramosIniciales(), prod=gramosPorcionados();
+  if(!ini||!filas.length){box.innerHTML='';box.style.display='none';return;}
+  const merma=parseFloat($('a_merma').value)||0, desp=parseFloat($('a_desp').value)||0;
+  const noid=Math.max(ini-prod-merma-desp,0);
+  const total=(prod+merma+desp+noid)/ini*100;
+  const cuadra=Math.abs(total-100)<0.005;
+  const p=(t,gr)=>`<span>${t} <b>${pctIni(gr)}</b></span>`;
+  box.style.display='flex';
+  box.innerHTML=p('Porciones',prod)+'<span>+</span>'+p('Merma',merma)+'<span>+</span>'+p('Desperdicio',desp)+'<span>+</span>'+p('No identificada',noid)+
+    `<span>=</span><b style="color:${cuadra?'var(--verde)':'var(--alert)'}">${total.toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})}%</b>`+
+    (cuadra?'':'<span class="mini" style="margin:0">Lo registrado supera lo que entró: revisa cantidades y pérdidas.</span>');
 }
 function upd(i,k,v){filas[i][k]=v;recalc();}
 function delFila(i){filas.splice(i,1);renderFilas();recalc();}
@@ -1123,7 +1144,8 @@ function analisisActualPDF(doc){
   const rend=gIni>0?prod/gIni*100:0, pperd=gIni>0?perdida/gIni*100:0;
   const cpg=costoPorGramo();
   const precio=parseFloat($('a_precio').value)||0, kl=parseFloat($('a_kl').value)||0;
-  const ng=n=>Math.round(Number(n)||0).toLocaleString('es-CO');   // gramos, sin sufijo
+  const ng=n=>Math.round(Number(n)||0).toLocaleString('es-CO');
+  const pct=gr=>(gIni>0?gr/gIni*100:0).toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';   // gramos, sin sufijo
   const base={styles:{fontSize:8,cellPadding:1.6,lineColor:[190,190,195],lineWidth:.1,
                       textColor:[30,30,30]},
               theme:'grid',margin:{left:M,right:M}};
@@ -1175,20 +1197,21 @@ function analisisActualPDF(doc){
   // Solo los cortes que de verdad se porcionaron; los de cantidad 0 ensucian.
   const cortes=filas.filter(f=>f.nombre&&(parseFloat(f.cant)||0)>0).map(f=>{
     const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0;
-    return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt(cpg*peso),fmt(cpg*peso*cant)];
+    return [f.nombre,ng(peso),ng(cant),ng(peso*cant),fmt2(cpg*peso),fmt2(cpg*peso*cant),pct(peso*cant)];
   });
-  if(!cortes.length) cortes.push(['—','','','','','']);
+  if(!cortes.length) cortes.push(['—','','','','','','']);
   doc.autoTable({...base,startY:doc.lastAutoTable.finalY+3,
     styles:{...base.styles,fontSize:7.5},
-    head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL']],
+    head:[['PROTEÍNAS PORCIONADAS','PESO POR GRAMOS','CANTIDAD PORCIONADA','CANTIDAD EN GRAMOS','COSTO UND','COSTO TOTAL','% PARTICIP.']],
     headStyles:cabecera,
     body:cortes,
-    foot:[['','','TOTALES',ng(prod),'',fmt(prod*cpg)]],
+    foot:[['','','TOTALES',ng(prod),'',fmt2(prod*cpg),pct(prod)]],
     footStyles:{fillColor:GRIS,textColor:[30,30,30],fontStyle:'bold',halign:'right',
                 lineColor:[190,190,195],lineWidth:.1},
-    columnStyles:{0:{cellWidth:56},1:{cellWidth:22,halign:'right'},
-                  2:{cellWidth:25,halign:'right'},3:{cellWidth:25,halign:'right'},
-                  4:{cellWidth:31,halign:'right'},5:{cellWidth:31,halign:'right'}}});
+    columnStyles:{0:{cellWidth:48},1:{cellWidth:18,halign:'right'},
+                  2:{cellWidth:22,halign:'right'},3:{cellWidth:24,halign:'right'},
+                  4:{cellWidth:27,halign:'right'},5:{cellWidth:29,halign:'right'},
+                  6:{cellWidth:22,halign:'right'}}});
 
   // ── Resultado y proceso, uno al lado del otro ───────────────────────────
   const yPar=doc.lastAutoTable.finalY+3;
@@ -1204,8 +1227,8 @@ function analisisActualPDF(doc){
           ['Costo por gramo',fmt2(cpg)],
           ['Total pérdida',g(perdida)],
           ['Valor pérdida',fmt(perdida*cpg)],
-          ['Rendimiento',rend.toFixed(1)+'%'],
-          ['% Pérdida',pperd.toFixed(1)+'%']],
+          ['Rendimiento',pct(prod)],
+          ['% Pérdida',pct(perdida)]],
     columnStyles:{0:{cellWidth:54},1:{cellWidth:38}}});
   const yIzq=doc.lastAutoTable.finalY;
   doc.autoTable({...parStyles,startY:yPar,tableWidth:92,margin:{left:108},
@@ -1213,10 +1236,10 @@ function analisisActualPDF(doc){
     headStyles:{fillColor:[125,18,32],textColor:255,fontStyle:'bold'},
     body:[['Duración',$('t_dur').value||'—'],
           ['# Operaciones',$('t_ops').value||'—'],
-          ['Gramos ingresados',g(gIni)],
-          ['Merma',g(merma)],
-          ['Desperdicio',g(desp)],
-          ['Dif. no identificada',g(difid)]],
+          ['Gramos ingresados',g(gIni)+'  ·  '+pct(gIni)],
+          ['Merma',g(merma)+'  ·  '+pct(merma)],
+          ['Desperdicio',g(desp)+'  ·  '+pct(desp)],
+          ['Dif. no identificada',g(difid)+'  ·  '+pct(difid)]],
     columnStyles:{0:{cellWidth:54},1:{cellWidth:38}}});
   const yBloque=Math.max(yIzq,doc.lastAutoTable.finalY);
 
@@ -1256,6 +1279,10 @@ function descargarPDFanalisis(){
   entregarArchivo(reporteAnalisis().output('blob'),nombreReporte(),'PDF 📄');
 }
 
+function imprimirVista(){
+  if($('analisis').classList.contains('active')){ imprimirAnalisis(); return; }
+  window.print();   // Consolidado, Panel y demás no tienen reporte propio
+}
 function imprimirAnalisis(){
   if(!$('a_prot').value){avisarFalta();return;}
   const doc=reporteAnalisis();
