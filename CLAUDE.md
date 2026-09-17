@@ -97,6 +97,26 @@ Menú lateral izquierdo (en móvil pasa arriba):
 4. Revisar si el "Anexo Informe.xlsx" (correo de Miguel Pereira) tiene una
    estructura de consolidado distinta a replicar.
 
+## Respaldo en Drive (2026-09-17)
+- `drive/Porcionamiento - script de Google.gs`: Apps Script que recibe cada
+  análisis y lo escribe en el libro del grupo (hojas **Panel**, **Consolidado**
+  con segmentador por restaurante, y **Detalle cortes**). Mismo esquema que el
+  registro de producción de fichas técnicas. ARCHIVO ASCII: las tildes van como
+  `á`; no pegar caracteres acentuados, rompen Apps Script al copiar.
+- En las hojas de datos: título en filas 1-2, encabezados en la 3, datos desde
+  la 4 (`FILA_ENC` / `FILA_DATOS`). Las 14 primeras columnas del Consolidado
+  replican el reporte del aplicativo; el resto va después. Si se agrega una
+  columna va AL FINAL: el Panel lee por posición (Col1, Col2...).
+- En `index.html`: `DRIVE_URL` (vacío = respaldo apagado, el aplicativo funciona
+  igual), `DRIVE_CLAVE`, y una cola en localStorage (`porcionamiento_cola_drive_v1`)
+  que reintenta al abrir, al volver el internet y cada 5 minutos. Cada análisis
+  lleva `uid` y se marca `drive:true` al confirmarse; borrar uno ya enviado manda
+  anularlo (en la hoja queda ANULADO, no se borra). Botón "Respaldar lo que
+  falte" en Consolidado para subir lo viejo.
+- El respaldo NO funciona dentro del visor de Artifacts: bloquea las peticiones
+  a servidores externos. Sí funciona en Railway y con el archivo abierto en el
+  navegador.
+
 ## Convenciones
 - Todo en español, tono operativo.
 - Identidad visual: acentos en rojo (#B01B2E).

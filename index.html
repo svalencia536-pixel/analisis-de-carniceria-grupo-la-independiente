@@ -257,6 +257,7 @@
       </tr></thead><tbody></tbody></table>
     </div>
     <div class="res-box" id="cons_tot" style="margin-top:12px"></div>
+    <div id="drive_estado" class="no-print" style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px"></div>
   </div>
 </div>
 
@@ -630,8 +631,96 @@ function cargarEstado(){
     }
   }catch(e){ /* datos corruptos: se ignoran */ }
 }
+/* ===== Respaldo en Drive =====================================================
+   Cada análisis guardado se manda además a la hoja del grupo en Drive, para
+   tener respaldo y poder revisarlo desde el correo del grupo sin entrar a cada
+   PC. NO reemplaza el guardado local: si el envío falla, el análisis ya quedó
+   guardado aquí y se reintenta solo. */
+const DRIVE_URL='';                              // dirección /exec del script de Google
+const DRIVE_CLAVE='PORCIONAMIENTO-GLI-2026';
+const LS_COLA='porcionamiento_cola_drive_v1';
+let cola=[], enviando=false;
+
+const idUnico=()=>Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+function cargarCola(){ try{ cola=JSON.parse(localStorage.getItem(LS_COLA)||'[]'); }catch(e){ cola=[]; } }
+function guardarCola(){ try{ localStorage.setItem(LS_COLA,JSON.stringify(cola)); }catch(e){} }
+
+/* El análisis y sus cortes, tal como los espera la hoja. */
+function paqueteDrive(a){
+  const st=stdDe(a.prod);
+  const cortes=(a.filas||[]).filter(f=>f.nombre&&(parseFloat(f.cant)||0)>0).map(f=>{
+    const peso=parseFloat(f.peso)||0, cant=parseFloat(f.cant)||0, gr=peso*cant;
+    const fijo=costoFijoDe(f.nombre)!=null;
+    return {nombre:f.nombre, tipo:fijo?'Subproducto costo fijo':(peso===1?'Subproducto':'Porción'),
+            peso, cant, gramos:gr,
+            cu:fijo?costoFijoDe(f.nombre):a.cpg*peso,
+            ct:fijo?costoFijoDe(f.nombre):a.cpg*gr,
+            part:a.gIni>0?gr/a.gIni:0};
+  });
+  return {modo:'analisis', clave:DRIVE_CLAVE, analisis:{
+    id:a.uid, fecha:a.fecha, consec:a.folio||String(a.consec||''), rest:a.rest, prod:a.prod,
+    prov:a.prov, fact:a.fact, precio:a.precio, kl:a.kl, gIni:a.gIni, prodG:a.prodG,
+    merma:a.merma, desp:a.desp, difid:a.difid, perdida:a.perdida,
+    rend:(a.rend||0)/100, pperd:a.gIni>0?a.perdida/a.gIni:0,
+    valorFac:a.valorFac, cpg:a.cpg, subtotal:a.subtotal, costoPerd:a.costoPerd,
+    rendMin:st?st.rendMin/100:'', estado:a.estado, elab:a.elab,
+    hi:a.hi, hf:a.hf, dur:a.dur, ops:a.ops
+  }, cortes};
+}
+
+function encolar(item){ cola.push(item); guardarCola(); pintarDrive(); enviarCola(); }
+
+async function enviarCola(){
+  if(enviando||!cola.length||!DRIVE_URL)return;
+  enviando=true; pintarDrive();
+  try{
+    while(cola.length){
+      const item=cola[0];
+      const cuerpo=item.tipo==='anular'
+        ? {modo:'anular', clave:DRIVE_CLAVE, id:item.id}
+        : paqueteDrive(item.analisis);
+      const res=await fetch(DRIVE_URL,{method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(cuerpo)});
+      const r=await res.json();
+      if(!r.ok)throw new Error(r.error||'respuesta sin ok');
+      cola.shift(); guardarCola();
+      if(item.tipo!=='anular'){
+        const a=analisis.find(x=>x.uid===item.analisis.uid);
+        if(a){ a.drive=true; persistir(); }
+      }
+      pintarDrive();
+    }
+  }catch(e){ /* sin internet o script caído: queda en cola para el próximo intento */ }
+  enviando=false; pintarDrive(); renderCons();
+}
+
+/* Sube de una vez los análisis que ya estaban guardados antes del respaldo. */
+function respaldarTodo(){
+  const faltan=analisis.filter(a=>!a.drive&&!cola.some(i=>i.analisis&&i.analisis.uid===a.uid));
+  if(!faltan.length){toast('Todo está respaldado ✅');return;}
+  if(!confirm(`Se enviarán ${faltan.length} análisis a la hoja del Drive. ¿Continuar?`))return;
+  faltan.forEach(a=>cola.push({tipo:'analisis',analisis:a}));
+  guardarCola(); pintarDrive(); enviarCola();
+  toast(faltan.length+' análisis en cola 📤');
+}
+
+function pintarDrive(){
+  const box=$('drive_estado'); if(!box)return;
+  const pend=cola.length, sinSubir=analisis.filter(a=>!a.drive).length;
+  let txt, color='var(--gris)';
+  if(!DRIVE_URL) txt='Respaldo en Drive: pendiente de conectar. Todo se guarda en este equipo.';
+  else if(enviando) txt='Enviando al Drive…';
+  else if(pend){ txt=`${pend} por enviar al Drive. Se reintenta solo.`; color='var(--amar)'; }
+  else if(sinSubir){ txt=`${sinSubir} análisis sin respaldar en el Drive.`; color='var(--amar)'; }
+  else { txt='Respaldo en Drive al día ✅'; color='var(--verde)'; }
+  box.innerHTML=`<span style="color:${color};font-weight:600">${txt}</span>`+
+    (DRIVE_URL?`<button class="btn sec" style="width:auto;margin:0;padding:6px 12px;font-size:12px" onclick="respaldarTodo()">Respaldar lo que falte</button>`:'');
+}
+
 function borrarDatos(){
   if(!confirm('¿Borrar TODOS los datos guardados (análisis, configuración y catálogo) de este dispositivo? Esta acción no se puede deshacer.'))return;
+  try{ localStorage.removeItem(LS_COLA); }catch(e){}
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
   location.reload();
 }
@@ -875,7 +964,7 @@ function guardarAnalisis(){
   if(hi&&hf){const [h1,m1]=hi.split(':').map(Number),[h2,m2]=hf.split(':').map(Number);let mm=(h2*60+m2)-(h1*60+m1);if(mm<0)mm+=1440;dur=`${Math.floor(mm/60)}h ${mm%60}m`;}
   const consec=proxConsecutivo();
   analisis.push({
-    id:aId++,consec,fecha:$('a_fecha').value||new Date().toISOString().slice(0,10),
+    id:aId++,uid:idUnico(),consec,fecha:$('a_fecha').value||new Date().toISOString().slice(0,10),
     folio:String(consec).padStart(4,'0'),rest:$('a_rest').value,elab:$('a_elab').value,
     prov:$('a_prov').value,fact:$('a_fact').value,prod:$('a_prot').value,
     precio:parseFloat($('a_precio').value)||0,kl:parseFloat($('a_kl').value)||0,
@@ -888,6 +977,7 @@ function guardarAnalisis(){
   ['a_merma','a_desp'].forEach(x=>$(x).value='0');
   $('a_prot').value=''; $('m_prot').textContent='';
   persistir();
+  encolar({tipo:'analisis',analisis:analisis[analisis.length-1]});
   pintarConsecutivo();
   recalc();
   toast('Análisis guardado ✅ (Consec. '+String(consec).padStart(4,'0')+')');
@@ -921,7 +1011,18 @@ function renderCons(){
       <div class="res-row"><span>💰 VALOR TOTAL DE LA PÉRDIDA</span><b style="color:var(--alert);font-size:17px">${fmt(vPerd)}</b></div>`;
   } else box.innerHTML='';
 }
-function delAn(id){analisis=analisis.filter(a=>a.id!==id);renderCons();pintarConsecutivo();persistir();}
+function delAn(id){
+  const a=analisis.find(x=>x.id===id);
+  if(a&&a.uid){
+    // Si todavía no salió, se saca de la cola; si ya está en el Drive, se pide anularlo.
+    const i=cola.findIndex(it=>it.analisis&&it.analisis.uid===a.uid);
+    if(i>=0){ cola.splice(i,1); guardarCola(); }
+    else if(a.drive) cola.push({tipo:'anular',id:a.uid});
+    guardarCola();
+  }
+  analisis=analisis.filter(x=>x.id!==id);
+  renderCons();pintarConsecutivo();persistir();enviarCola();
+}
 
 // 'es' para que la Ñ quede donde debe: ENTRAÑA antes que ENTRAR.
 function ordenarEstandares(){
@@ -1336,8 +1437,19 @@ async function compartirAnalisis(){
 
 cargarEstado();
 ordenarEstandares();
+cargarCola();
+/* Los análisis guardados antes del respaldo no traen identificador: se les
+   pone uno para poder enviarlos sin que se dupliquen. */
+let _sinId=0;
+analisis.forEach(a=>{ if(!a.uid){ a.uid=idUnico(); _sinId++; } });
+if(_sinId)persistir();
 $('a_fecha').value=new Date().toISOString().slice(0,10);
 fillSelects();renderStd();renderFilas();renderMatriz();renderConfig();pintarConsecutivo();recalc();
+pintarDrive();
+/* Reintentos: al abrir, al volver el internet y cada cinco minutos. */
+setTimeout(enviarCola,2500);
+window.addEventListener('online',enviarCola);
+setInterval(enviarCola,300000);
 </script>
 </body>
 </html>
