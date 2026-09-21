@@ -424,7 +424,11 @@ function montarTodo() {
   var carpeta = carpetaDelGrupo();
   var r = libroDelGrupo(carpeta);
   var l = r.libro;
-  l.setSpreadsheetLocale('es_CO');
+  /* Las formulas se escriben con comas: con el libro en es_CO (punto y coma)
+     Google no las entiende y salen #ERROR!. Se arma en en_US y al final se
+     pasa a es_CO; las formulas ya guardadas se ven con punto y coma solas. */
+  l.setSpreadsheetLocale('en_US');
+  SpreadsheetApp.flush();
   l.setSpreadsheetTimeZone(ZONA);
 
   var panel = hojaNueva(l, HOJA_PANEL, 0);
@@ -450,6 +454,8 @@ function montarTodo() {
   listas.hideSheet();
 
   armarPanel(panel);
+  SpreadsheetApp.flush();
+  l.setSpreadsheetLocale('es_CO');
   l.setActiveSheet(panel);
 
   var informe = [];
@@ -482,7 +488,12 @@ function montarTodo() {
      V rendimiento minimo  W elaborado por  AB registrado  AD vigencia */
 
 function repararPanel() {
+  var l = libro();
+  l.setSpreadsheetLocale('en_US');   /* ver montarTodo */
+  SpreadsheetApp.flush();
   armarPanel(hoja(HOJA_PANEL));
+  SpreadsheetApp.flush();
+  l.setSpreadsheetLocale('es_CO');
 }
 
 /* Los analisis vigentes dentro del periodo y el restaurante elegidos. */
