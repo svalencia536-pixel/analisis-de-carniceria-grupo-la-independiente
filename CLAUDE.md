@@ -70,6 +70,13 @@ Menú lateral izquierdo (en móvil pasa arriba):
   `proveedores`. Al publicar datos nuevos hay que subirla; lo guardado en
   localStorage con una versión anterior se descarta para que no pise al código.
   Los análisis del usuario NO se pierden, pero sí las ediciones a esas listas.
+- `EST_VER` + `AJUSTES_EST` (2026-09-21): forma de publicar cambios de
+  estándares SIN subir `CAT_VER`. Se suman/reemplazan por nombre en lo guardado
+  de cada equipo una sola vez, sin tocar personal ni proveedores (la oficina
+  agregó personal propio, p.ej. JOSE TORREGROSA, que un CAT_VER nuevo borraría).
+  `ESTANDARES_HISTORICOS`: rendimiento promedio ago–sep 2026 (productos con 3+
+  análisis, sin rendimientos >100%), redondeado hacia abajo; toda la pérdida va
+  a desperdicio porque el histórico no la separa. CAMARON al 80%.
 - `personas`: personal de corte real del grupo (5). Aparecen en "Elaborado por".
 - `proveedores`: 15, consolidados de las planillas de KINTO, LOLA y GIGI
   (hoja "Hoja3" = producto→proveedor, columna Proveedor de "PORCIONAMIENTOS" y
