@@ -636,7 +636,7 @@ function armarPanel(h) {
   /* Ultimos recibidos:  Col10 % rendimiento, Col14 estado, Col23 elaboro, Col28 registrado */
   titulo(h, 48, '\u00daltimos an\u00e1lisis recibidos');
   h.getRange('B49').setFormula('=IFERROR(QUERY(' + D + ',' +
-    '"select Col1, Col3, Col4, Col10, Col14, Col13, Col23 order by Col28 desc limit 30 ' +
+    '"select Col1, Col3, Col4, Col10, Col14, Col13, Col23 order by Col1 desc, Col28 desc limit 30 ' +
     'label Col1 \'Fecha\', Col3 \'Restaurante\', Col4 \'Producto\', Col10 \'Rendimiento\', ' +
     'Col14 \'Estado\', Col13 \'Valor p\u00e9rdida\', Col23 \'Elabor\u00f3\'",0),' + SIN + ')');
   tablaQuery(h, 49, 30, ['dd/mm/yyyy', '@', '@', '0.0%', '@', '$#,##0', '@']);
