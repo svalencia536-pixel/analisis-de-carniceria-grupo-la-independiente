@@ -598,13 +598,28 @@ let catalogo={
  "ESPALDILLA":[["RECORTE DE ESPALDILLA",1]]
 };
 
+const ESTANDARES_HISTORICOS=[
+  {prod:"BONDIOLA",desp:9,merma:0,noid:0},{prod:"CHICHARRON",desp:23,merma:0,noid:0},
+  {prod:"COSTILLA DE CERDO",desp:31,merma:0,noid:0},{prod:"ARRACHERA",desp:16,merma:0,noid:0},
+  {prod:"PORK BELLY",desp:34,merma:0,noid:0},{prod:"ENTRAÑA",desp:22,merma:0,noid:0},
+  {prod:"TENTACULO DE CALAMAR",desp:48,merma:0,noid:0},{prod:"MORRO",desp:50,merma:0,noid:0},
+  {prod:"PULPA DE LANGOSTA",desp:2,merma:0,noid:0},{prod:"PESCA BLANCA",desp:27,merma:0,noid:0}
+];
+// Ajustes de estándares que se SUMAN a lo guardado en cada equipo sin tocar
+// sus otras listas (subir CAT_VER borraría el personal que cada PC agregó).
+// Se aplican una vez por equipo; para otro ajuste, sube EST_VER y cambia la lista.
+const EST_VER=1;
+const AJUSTES_EST=()=>[{prod:"CAMARON",desp:20,merma:0,noid:0},...ESTANDARES_HISTORICOS];
 let estandares=[
   {prod:"LOMO FINO",desp:11,merma:4,noid:1},{prod:"NEW YORK CERTIFICADO",desp:1,merma:5,noid:0},
-  {prod:"CAMARON",desp:0,merma:0,noid:0},{prod:"PULPO",desp:30,merma:20,noid:0},
+  {prod:"CAMARON",desp:20,merma:0,noid:0},{prod:"PULPO",desp:30,merma:20,noid:0},
   {prod:"FILETE DE SALMON",desp:3,merma:3,noid:0},{prod:"FILETE DE ROBALO",desp:5,merma:10,noid:0},
   {prod:"PECHUGA",desp:2,merma:3,noid:1},{prod:"FILETE DE PECHUGA",desp:2,merma:3,noid:1},
   {prod:"CHICHARRON DE CERDO",desp:3,merma:1,noid:3},
-  {prod:"LOMO DE ATUN",desp:2,merma:5,noid:0}
+  {prod:"LOMO DE ATUN",desp:2,merma:5,noid:0},
+  // Del promedio histórico (ago–sep 2026, productos con 3+ análisis). El
+  // histórico solo trae la pérdida total: va toda a desperdicio.
+  ...ESTANDARES_HISTORICOS
 ];
 let analisis=[];
 let aId=1;
@@ -628,7 +643,7 @@ let _lsDisponible=true;
 function persistir(){
   if(!_lsDisponible)return;
   try{
-    const data={analisis,aId,personas,proveedores,restaurantes,estandares,catalogo,catVer:CAT_VER};
+    const data={analisis,aId,personas,proveedores,restaurantes,estandares,catalogo,catVer:CAT_VER,estVer:EST_VER};
     localStorage.setItem(LS_KEY,JSON.stringify(data));
   }catch(e){ _lsDisponible=false; }
 }
@@ -647,6 +662,14 @@ function cargarEstado(){
       if(Array.isArray(d.personas)&&d.personas.length)personas=d.personas;
       if(Array.isArray(d.proveedores)&&d.proveedores.length)proveedores=d.proveedores;
       if(Array.isArray(d.estandares)&&d.estandares.length)estandares=d.estandares;
+      if((d.estVer||0)<EST_VER){
+        AJUSTES_EST().forEach(n=>{
+          const i=estandares.findIndex(s=>s.prod.toUpperCase()===n.prod.toUpperCase());
+          if(i>=0)estandares[i]=n; else estandares.push(n);
+        });
+        estandares.sort((a,b)=>a.prod.localeCompare(b.prod));
+        setTimeout(persistir,0);
+      }
       if(d.catalogo&&typeof d.catalogo==='object'&&Object.keys(d.catalogo).length)catalogo=d.catalogo;
     }else if(d.catalogo&&typeof d.catalogo==='object'){
       // Versión anterior: manda el catálogo del código, pero se conservan las
