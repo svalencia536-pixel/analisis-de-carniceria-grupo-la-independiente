@@ -594,9 +594,6 @@ function armarPanel(h) {
   h.getRange('C6').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().build());
   h.getRange('E6').setDataValidation(SpreadsheetApp.newDataValidation().requireDate().build());
   filtroCaja(h, 'C6'); filtroCaja(h, 'E6'); filtroCaja(h, 'G6:H6');
-  h.getRange('B7:I7').merge()
-      .setValue('Cambia las fechas y el restaurante para filtrar. Los an\u00e1lisis anulados no se cuentan.')
-      .setFontSize(9).setFontColor(GRIS).setFontStyle('italic');
 
   /* Indicadores */
   var K = criterios();
@@ -658,9 +655,5 @@ function armarPanel(h) {
       .setBackground('#E2EFDA').setFontColor('#1E6B3A').setRanges([est]).build()
   ]);
 
-  h.getRange('B67:I67').merge()
-      .setValue('Se actualiza solo con cada an\u00e1lisis que se guarda en el aplicativo. ' +
-                'Documento de uso interno. Grupo La Independiente.')
-      .setFontSize(9).setFontColor(GRIS).setHorizontalAlignment('center');
   h.setFrozenRows(7);
 }
