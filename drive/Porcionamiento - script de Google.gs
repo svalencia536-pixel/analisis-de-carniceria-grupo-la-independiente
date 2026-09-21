@@ -132,9 +132,21 @@ function responder(objeto) {
 }
 
 function libro() {
-  var id = PropertiesService.getScriptProperties().getProperty(PROP_LIBRO);
-  if (!id) throw new Error('Falta correr montarTodo en el editor del script.');
-  return SpreadsheetApp.openById(id);
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty(PROP_LIBRO);
+  if (id) {
+    try { return SpreadsheetApp.openById(id); } catch (err) { /* se busca en la carpeta */ }
+  }
+  // Si montarTodo se corrio en otro proyecto, el libro igual esta en la carpeta.
+  var halladas = carpetaDelGrupo().getFilesByName(NOMBRE_LIBRO);
+  while (halladas.hasNext()) {
+    var f = halladas.next();
+    if (f.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      props.setProperty(PROP_LIBRO, f.getId());
+      return SpreadsheetApp.openById(f.getId());
+    }
+  }
+  throw new Error('Falta correr montarTodo en el editor del script.');
 }
 
 function hoja(nombre) {
