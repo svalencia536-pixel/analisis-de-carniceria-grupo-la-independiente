@@ -132,21 +132,9 @@ function responder(objeto) {
 }
 
 function libro() {
-  var props = PropertiesService.getScriptProperties();
-  var id = props.getProperty(PROP_LIBRO);
-  if (id) {
-    try { return SpreadsheetApp.openById(id); } catch (err) { /* se busca en la carpeta */ }
-  }
-  // Si montarTodo se corrio en otro proyecto, el libro igual esta en la carpeta.
-  var halladas = carpetaDelGrupo().getFilesByName(NOMBRE_LIBRO);
-  while (halladas.hasNext()) {
-    var f = halladas.next();
-    if (f.getMimeType() === MimeType.GOOGLE_SHEETS) {
-      props.setProperty(PROP_LIBRO, f.getId());
-      return SpreadsheetApp.openById(f.getId());
-    }
-  }
-  throw new Error('Falta correr montarTodo en el editor del script.');
+  var id = PropertiesService.getScriptProperties().getProperty(PROP_LIBRO);
+  if (!id) throw new Error('Falta correr montarTodo en el editor del script.');
+  return SpreadsheetApp.openById(id);
 }
 
 function hoja(nombre) {
@@ -358,9 +346,13 @@ function segmentador(h, n) {
         SpreadsheetApp.newFilterCriteria().setHiddenValues([]).build());
   }
   s.setTitle('Restaurante');
-  s.setTitleTextColor(ROJO);
-  s.setBackgroundColor('#FFFFFF');
-  s.setApplyToPivotTables(false);
+  // Solo estetica: si Google cambia algo aqui, el segmentador igual queda.
+  try {
+    s.setTitleTextStyle(SpreadsheetApp.newTextStyle()
+        .setForegroundColor(ROJO).setBold(true).build());
+  } catch (err) { /* sigue sin color */ }
+  try { s.setBackgroundColor('#FFFFFF'); } catch (err) { /* opcional */ }
+  try { s.setApplyToPivotTables(false); } catch (err) { /* opcional */ }
 }
 
 /* Tabla de datos: titulo, segmentador, encabezado rojo, filas fijas, bandas,
