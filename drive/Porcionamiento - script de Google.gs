@@ -648,14 +648,17 @@ function armarPanel(h) {
     'sum(Col13) \'Valor p\u00e9rdida\'",0),' + SIN + ')');
   tablaQuery(h, 17, 9, ['@', '#,##0', '#,##0.0', '0.00%', '0.00%', '$#,##0']);
 
-  /* Productos con menor rendimiento:  Col4 producto, Col22 rendimiento minimo */
+  /* Productos con menor rendimiento:  Col4 producto. Se agrupa adentro y se
+     ordena afuera: ordenar por una division de sumas no siempre lo acepta
+     QUERY. No usa el rendimiento minimo: lo historico subido del Excel no lo
+     trae y promediar una columna vacia hace fallar la consulta. */
   titulo(h, 29, 'Productos con menor rendimiento');
-  h.getRange('B30').setFormula('=IFERROR(QUERY(' + D + ',' +
-    '"select Col4, count(Col1), sum(Col7)/1000, sum(Col8)/sum(Col7), avg(Col22), sum(Col13) ' +
-    'group by Col4 order by sum(Col8)/sum(Col7) asc limit 15 ' +
+  h.getRange('B30').setFormula('=IFERROR(QUERY(QUERY(' + D + ',' +
+    '"select Col4, count(Col1), sum(Col7)/1000, sum(Col8)/sum(Col7), sum(Col9)/sum(Col7), sum(Col13) ' +
+    'group by Col4 ' +
     'label Col4 \'Producto\', count(Col1) \'An\u00e1lisis\', sum(Col7)/1000 \'Kilos\', ' +
-    'sum(Col8)/sum(Col7) \'Rendimiento\', avg(Col22) \'Rend. m\u00ednimo\', ' +
-    'sum(Col13) \'Valor p\u00e9rdida\'",0),' + SIN + ')');
+    'sum(Col8)/sum(Col7) \'Rendimiento\', sum(Col9)/sum(Col7) \'P\u00e9rdida\', ' +
+    'sum(Col13) \'Valor p\u00e9rdida\'",0),"select * order by Col4 asc limit 15",1),' + SIN + ')');
   tablaQuery(h, 30, 15, ['@', '#,##0', '#,##0.0', '0.00%', '0.00%', '$#,##0']);
 
   /* Ultimos recibidos:  Col10 % rendimiento, Col14 estado, Col23 elaboro, Col28 registrado */
@@ -668,10 +671,6 @@ function armarPanel(h) {
 
   var est = h.getRange('F50:F79');
   h.setConditionalFormatRules([
-    /* rinde por debajo del minimo del estandar */
-    SpreadsheetApp.newConditionalFormatRule()
-      .whenFormulaSatisfied('=AND(ISNUMBER($E31),ISNUMBER($F31),$E31<$F31)')
-      .setFontColor('#A61B1B').setBold(true).setRanges([h.getRange('E31:E45')]).build(),
     SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith('Bajo')
       .setBackground('#F8D7DA').setFontColor('#A61B1B').setRanges([est]).build(),
     SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith('L\u00edmite')
