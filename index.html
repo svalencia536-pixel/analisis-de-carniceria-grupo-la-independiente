@@ -63,6 +63,9 @@
   .tbl-scroll{overflow-x:auto}
   .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;color:#fff}
   .pill.v{background:var(--verde)}.pill.a{background:var(--amar)}.pill.r{background:var(--alert)}
+  .fuente{display:inline-flex;background:#eceef1;border-radius:10px;padding:3px;margin-bottom:6px;flex-wrap:wrap}
+  .fuente button{border:none;background:none;padding:8px 14px;border-radius:8px;font-size:13.5px;font-weight:700;color:var(--gris);cursor:pointer;font-family:inherit}
+  .fuente button.on{background:var(--rojo);color:#fff}
   .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   @media(max-width:680px){.kpi-grid{grid-template-columns:1fr 1fr}}
   .kpi{background:var(--card);border-radius:12px;padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-left:4px solid var(--rojo)}
@@ -320,6 +323,19 @@
 
 <!-- ========= PANEL ========= -->
 <div id="panel" class="tab">
+  <div class="card no-print">
+    <div class="fuente">
+      <button id="pf_local" class="on" onclick="fuentePanel('local')">💻 Este equipo</button>
+      <button id="pf_grupo" onclick="fuentePanel('grupo')">🏢 Todo el grupo</button>
+    </div>
+    <div class="grid4" style="align-items:end">
+      <div><label>Desde</label><input type="date" id="p_desde" onchange="renderPanel()"></div>
+      <div><label>Hasta</label><input type="date" id="p_hasta" onchange="renderPanel()"></div>
+      <div><label>Restaurante</label><select id="p_rest" onchange="renderPanel()"><option value="">Todos</option></select></div>
+      <div><button class="btn sec" style="margin-top:0;padding:9px" onclick="limpiarFiltrosPanel()">Quitar filtros</button></div>
+    </div>
+    <div class="mini" id="p_estado" style="margin-top:8px"></div>
+  </div>
   <div class="kpi-grid" style="margin-bottom:14px">
     <div class="kpi"><div class="val" id="k_ops">0</div><div class="lbl">Porcionamientos</div></div>
     <div class="kpi" style="border-left-color:var(--verde)"><div class="val" id="k_rend">0%</div><div class="lbl">Rend. promedio</div></div>
@@ -342,6 +358,12 @@
     <h2>🏪 Rendimiento por restaurante</h2>
     <div class="tbl-scroll">
       <table id="t_rest"><thead><tr><th>Restaurante</th><th>Análisis</th><th>Rend. prom.</th><th>Valor pérdida</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🕒 Últimos 30 porcionamientos</h2>
+    <div class="tbl-scroll">
+      <table id="t_ult"><thead><tr><th>Fecha</th><th>Folio</th><th>Restaurante</th><th>Producto</th><th>Rend.</th><th>Estado</th><th>Valor pérdida</th><th>Elaboró</th></tr></thead><tbody></tbody></table>
     </div>
   </div>
 </div>
@@ -1111,27 +1133,86 @@ function addProteina(){
   $('mx_corte').focus();
 }
 
+/* Panel: "Este equipo" usa los análisis guardados en este navegador; "Todo el
+   grupo" los trae del libro del Drive (lo que llegó de todos los equipos). */
+const LS_GRUPO='porcionamiento_grupo_v1';
+let panelFuente='local', grupo=null, grupoCargando=false, grupoError='';
+try{ const c=JSON.parse(localStorage.getItem(LS_GRUPO)||'null'); if(c&&Array.isArray(c.filas))grupo=c; }catch(e){}
+const deFilaGrupo=f=>({fecha:f[0],folio:f[1],rest:f[2],prod:f[3],gIni:+f[4]||0,prodG:+f[5]||0,
+  perdida:+f[6]||0,rend:(+f[7]||0)*100,subtotal:+f[8]||0,costoPerd:+f[9]||0,estado:f[10],valorFac:+f[11]||0,elab:f[12]});
+function fuentePanel(f){
+  panelFuente=f;
+  $('pf_local').classList.toggle('on',f==='local'); $('pf_grupo').classList.toggle('on',f==='grupo');
+  $('p_rest').value='';
+  if(f==='grupo')cargarGrupo(); renderPanel();
+}
+async function cargarGrupo(){
+  if(!DRIVE_URL){grupoError='El respaldo en Drive no está conectado.';return;}
+  if(grupoCargando)return;
+  grupoCargando=true; grupoError=''; renderPanel();
+  try{
+    const r=await (await fetch(DRIVE_URL+'?modo=datos&clave='+encodeURIComponent(DRIVE_CLAVE))).json();
+    if(!r.ok)throw new Error(r.error||'sin respuesta');
+    if(!Array.isArray(r.filas))throw new Error('el script del Drive no tiene la versión nueva');
+    grupo={t:Date.now(),filas:r.filas};
+    try{localStorage.setItem(LS_GRUPO,JSON.stringify(grupo));}catch(e){}
+  }catch(e){
+    const causa=e instanceof TypeError?'sin conexión con el Drive':e.message;
+    grupoError='No se pudo traer lo del Drive ('+causa+')'+(grupo?'; se muestra la última copia.':'.');
+  }
+  grupoCargando=false; renderPanel();
+}
+function limpiarFiltrosPanel(){ $('p_desde').value=''; $('p_hasta').value=''; $('p_rest').value=''; renderPanel(); }
+function datosPanel(){
+  const base=panelFuente==='grupo'?(grupo?grupo.filas.map(deFilaGrupo):[]):analisis;
+  // Lista de restaurantes según lo que hay en la fuente elegida
+  const sel=$('p_rest'), actual=sel.value;
+  const rests=[...new Set(base.map(a=>a.rest).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">Todos</option>'+rests.map(r=>`<option${r===actual?' selected':''}>${r}</option>`).join('');
+  const d=$('p_desde').value,h=$('p_hasta').value,r=sel.value;
+  return base.filter(a=>(!d||a.fecha>=d)&&(!h||a.fecha<=h)&&(!r||a.rest===r));
+}
+function estadoPanel(n){
+  let t;
+  if(panelFuente==='local') t=`Análisis guardados en este equipo · ${n} en el filtro`;
+  else if(grupoCargando) t='Trayendo los análisis del Drive…';
+  else if(grupo) t=`Todo el grupo, desde el Drive · ${n} en el filtro · actualizado ${new Date(grupo.t).toLocaleString('es-CO',{dateStyle:'short',timeStyle:'short'})}`+
+    ` · <a href="#" onclick="cargarGrupo();return false" style="color:var(--rojo);font-weight:700">Actualizar</a>`;
+  else t='';
+  if(panelFuente==='grupo'&&grupoError) t+=(t?' · ':'')+`<span style="color:var(--alert);font-weight:700">${grupoError}</span>`;
+  $('p_estado').innerHTML=t;
+}
+const pillEstado=e=>{
+  const c=e==='OK'?'v':e==='Límite'?'a':e==='Bajo estándar'?'r':'';
+  return `<span class="pill ${c}"${c?'':' style="background:#9aa0a8"'}>${e||'—'}</span>`;
+};
+
 function renderPanel(){
-  const n=analisis.length;
-  const rendProm=n?analisis.reduce((s,a)=>s+a.rend,0)/n:0;
-  const fuera=analisis.filter(a=>a.estado==='Bajo estándar').length;
-  const costoPerd=analisis.reduce((s,a)=>s+a.costoPerd,0);
-  const subtotal=analisis.reduce((s,a)=>s+a.subtotal,0);
-  const valorFac=analisis.reduce((s,a)=>s+a.valorFac,0);
-  const gPerd=analisis.reduce((s,a)=>s+a.perdida,0);
-  const gIniT=analisis.reduce((s,a)=>s+a.gIni,0);
+  const lista=datosPanel();
+  estadoPanel(lista.length);
+  const n=lista.length;
+  const rendProm=n?lista.reduce((s,a)=>s+a.rend,0)/n:0;
+  const fuera=lista.filter(a=>a.estado==='Bajo estándar').length;
+  const costoPerd=lista.reduce((s,a)=>s+a.costoPerd,0);
+  const subtotal=lista.reduce((s,a)=>s+a.subtotal,0);
+  const valorFac=lista.reduce((s,a)=>s+a.valorFac,0);
+  const gPerd=lista.reduce((s,a)=>s+a.perdida,0);
+  const gIniT=lista.reduce((s,a)=>s+a.gIni,0);
   $('k_ops').textContent=n;$('k_rend').textContent=rendProm.toFixed(1)+'%';
   $('k_fuera').textContent=fuera;$('k_perd').textContent=fmt(costoPerd);
   $('k_sub').textContent=fmt(subtotal);$('k_fac').textContent=fmt(valorFac);
   $('k_pperd').textContent=(gIniT>0?gPerd/gIniT*100:0).toFixed(1)+'%';$('k_gperd').textContent=g(gPerd);
   const byP={};
-  analisis.forEach(a=>{(byP[a.prod]=byP[a.prod]||{n:0,rend:0,perd:0,costo:0});byP[a.prod].n++;byP[a.prod].rend+=a.rend;byP[a.prod].perd+=a.perdida;byP[a.prod].costo+=a.costoPerd;});
+  lista.forEach(a=>{(byP[a.prod]=byP[a.prod]||{n:0,rend:0,perd:0,costo:0});byP[a.prod].n++;byP[a.prod].rend+=a.rend;byP[a.prod].perd+=a.perdida;byP[a.prod].costo+=a.costoPerd;});
   const prows=Object.entries(byP).map(([k,v])=>({k,...v,rp:v.rend/v.n})).sort((a,b)=>a.rp-b.rp).slice(0,10);
   $('t_prod').querySelector('tbody').innerHTML=prows.length?prows.map(p=>`<tr><td>${p.k}</td><td>${p.n}</td><td>${p.rp.toFixed(1)}%</td><td>${g(p.perd)}</td><td>${fmt(p.costo)}</td></tr>`).join(''):`<tr><td colspan="5" class="empty">Sin datos</td></tr>`;
   const byR={};
-  analisis.forEach(a=>{(byR[a.rest]=byR[a.rest]||{n:0,rend:0,costo:0});byR[a.rest].n++;byR[a.rest].rend+=a.rend;byR[a.rest].costo+=a.costoPerd;});
+  lista.forEach(a=>{(byR[a.rest]=byR[a.rest]||{n:0,rend:0,costo:0});byR[a.rest].n++;byR[a.rest].rend+=a.rend;byR[a.rest].costo+=a.costoPerd;});
   const rrows=Object.entries(byR).map(([k,v])=>({k,...v,rp:v.rend/v.n})).sort((a,b)=>b.costo-a.costo);
   $('t_rest').querySelector('tbody').innerHTML=rrows.length?rrows.map(r=>`<tr><td>${r.k}</td><td>${r.n}</td><td>${r.rp.toFixed(1)}%</td><td>${fmt(r.costo)}</td></tr>`).join(''):`<tr><td colspan="4" class="empty">Sin datos</td></tr>`;
+  const ult=[...lista].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||String(b.folio||'').localeCompare(String(a.folio||''))).slice(0,30);
+  const fec=f=>f?f.split('-').reverse().join('/'):'';
+  $('t_ult').querySelector('tbody').innerHTML=ult.length?ult.map(a=>`<tr><td>${fec(a.fecha)}</td><td>${a.folio||''}</td><td>${a.rest||''}</td><td>${a.prod||''}</td><td>${a.rend.toFixed(1)}%</td><td>${pillEstado(a.estado)}</td><td>${fmt(a.costoPerd)}</td><td>${a.elab||''}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">Sin datos</td></tr>`;
 }
 
 /* Entrega de archivos.

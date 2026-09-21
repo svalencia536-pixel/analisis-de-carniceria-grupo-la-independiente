@@ -271,8 +271,13 @@ function anularAnalisis(datos) {
 }
 
 /* Abrir la direccion en el navegador dice si quedo bien desplegado. */
-function doGet() {
+function doGet(e) {
   try {
+    var p = (e && e.parameter) || {};
+    if (p.modo === 'datos') {
+      if (p.clave !== CLAVE) return responder({ ok: false, error: 'Clave incorrecta' });
+      return entregarDatos();
+    }
     var l = libro();
     return responder({
       ok: true,
@@ -284,6 +289,26 @@ function doGet() {
   } catch (err) {
     return responder({ ok: false, error: String(err) });
   }
+}
+
+/* Los analisis vigentes del Consolidado, para la vista "Todo el grupo" del
+   Panel del aplicativo. Solo las columnas que esa vista usa. */
+function entregarDatos() {
+  var h = hoja(HOJA_CONS);
+  var ultima = h.getLastRow();
+  var filas = ultima < FILA_DATOS ? [] :
+      h.getRange(FILA_DATOS, 1, ultima - FILA_DATOS + 1, COLS_CONS.length).getValues();
+  var salida = [];
+  for (var i = 0; i < filas.length; i++) {
+    var f = filas[i];
+    if (f[COL_VIG_CONS - 1] !== 'VIGENTE') continue;
+    var fecha = f[0] instanceof Date ? Utilities.formatDate(f[0], ZONA, 'yyyy-MM-dd') : String(f[0]);
+    /* A fecha, B folio, C rest, D prod, G inicial, H final, I perdida,
+       J rend, L subtotal, M valor perdida, N estado, U valor factura, W elaboro */
+    salida.push([fecha, String(f[1]), f[2], f[3], f[6], f[7], f[8], f[9],
+                 f[11], f[12], f[13], f[20], f[22]]);
+  }
+  return responder({ ok: true, filas: salida });
 }
 
 
