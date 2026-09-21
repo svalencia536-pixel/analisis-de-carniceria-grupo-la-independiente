@@ -113,6 +113,11 @@ Menú lateral izquierdo (en móvil pasa arriba):
   lleva `uid` y se marca `drive:true` al confirmarse; borrar uno ya enviado manda
   anularlo (en la hoja queda ANULADO, no se borra). Botón "Respaldar lo que
   falte" en Consolidado para subir lo viejo.
+- Montado el 2026-09-20 en la cuenta `costosgrupolaindependiente@gmail.com`.
+  Libro: https://docs.google.com/spreadsheets/d/1Qw2PY097nxCAVvnqL4RxQJsqIg9ZCpur5GyVDWl39sY/edit
+  (en la carpeta 1Wj3xuMvv1YFJzHz876I07Ea8-LGbQLhI). `DRIVE_URL` ya apunta al
+  /exec de ese proyecto. Si se cambia el código de doPost hay que publicar una
+  versión nueva de la MISMA implementación para no cambiar la dirección.
 - El respaldo NO funciona dentro del visor de Artifacts: bloquea las peticiones
   a servidores externos. Sí funciona en Railway y con el archivo abierto en el
   navegador.
