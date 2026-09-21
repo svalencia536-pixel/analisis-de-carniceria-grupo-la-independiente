@@ -560,7 +560,7 @@ function armarPanel(h) {
   for (var m = 0; m < unidas.length; m++) unidas[m].breakApart();
   if (h.getMaxColumns() > 10) h.deleteColumns(11, h.getMaxColumns() - 10);
   if (h.getMaxColumns() < 10) h.insertColumnsAfter(h.getMaxColumns(), 10 - h.getMaxColumns());
-  if (h.getMaxRows() < 80) h.insertRowsAfter(h.getMaxRows(), 80 - h.getMaxRows());
+  if (h.getMaxRows() < 90) h.insertRowsAfter(h.getMaxRows(), 90 - h.getMaxRows());
 
   h.setHiddenGridlines(true);
   h.getRange(1, 1, h.getMaxRows(), 10).setFontFamily('Calibri').setFontSize(10)
@@ -636,12 +636,12 @@ function armarPanel(h) {
   /* Ultimos recibidos:  Col10 % rendimiento, Col14 estado, Col23 elaboro, Col28 registrado */
   titulo(h, 48, '\u00daltimos an\u00e1lisis recibidos');
   h.getRange('B49').setFormula('=IFERROR(QUERY(' + D + ',' +
-    '"select Col1, Col3, Col4, Col10, Col14, Col13, Col23 order by Col28 desc limit 15 ' +
+    '"select Col1, Col3, Col4, Col10, Col14, Col13, Col23 order by Col28 desc limit 30 ' +
     'label Col1 \'Fecha\', Col3 \'Restaurante\', Col4 \'Producto\', Col10 \'Rendimiento\', ' +
     'Col14 \'Estado\', Col13 \'Valor p\u00e9rdida\', Col23 \'Elabor\u00f3\'",0),' + SIN + ')');
-  tablaQuery(h, 49, 15, ['dd/mm/yyyy', '@', '@', '0.0%', '@', '$#,##0', '@']);
+  tablaQuery(h, 49, 30, ['dd/mm/yyyy', '@', '@', '0.0%', '@', '$#,##0', '@']);
 
-  var est = h.getRange('F50:F64');
+  var est = h.getRange('F50:F79');
   h.setConditionalFormatRules([
     /* rinde por debajo del minimo del estandar */
     SpreadsheetApp.newConditionalFormatRule()
