@@ -462,7 +462,7 @@
 
     <div class="paso"><div class="num">6</div><div>
       <h3>Guarda en el consolidado</h3>
-      <p>Verifica el rendimiento y el valor de la pérdida, y presiona <b>Guardar en consolidado</b>. El formulario se limpia y queda listo para el siguiente. Antes de guardar puedes <b>descargar el PDF</b> de una hoja o <b>compartirlo</b>.</p>
+      <p>Verifica el rendimiento y el valor de la pérdida, y presiona <b>Guardar en consolidado</b>. El formulario se limpia y queda listo para el siguiente, y el análisis se envía solo al <b>Drive del grupo</b>. Antes de guardar puedes <b>descargar el PDF</b> de una hoja o <b>compartirlo</b>.</p>
     </div></div>
   </div>
 
@@ -479,6 +479,7 @@
       <div class="formula"><span>Rendimiento</span><span>gramos porcionados ÷ cantidad inicial</span></div>
     </div>
     <p class="mini" style="margin-top:8px">Toda la factura se reparte entre el producto que sí quedó útil. Por eso, mientras más se pierda, más caro cuesta cada gramo aprovechado.</p>
+    <p class="mini" style="margin-top:6px"><b>Excepción:</b> el <b>recorte de pulpo</b> y el <b>recorte y cabeza de pulpo</b> cuestan $1 fijo. Se registran para control, pero el valor de la factura lo absorben los demás cortes.</p>
   </div>
 
   <div class="card">
@@ -488,7 +489,7 @@
       <div class="res-row"><span class="pill v">OK</span><span>Rinde igual o más que el mínimo.</span></div>
       <div class="res-row"><span class="pill a">Al límite</span><span>Hasta 3 puntos por debajo. Revisar.</span></div>
       <div class="res-row"><span class="pill r">Bajo estándar</span><span>Más de 3 puntos por debajo. Exige explicación.</span></div>
-      <div class="res-row"><span class="pill v">Sin estándar</span><span>Ese producto aún no tiene mínimo definido.</span></div>
+      <div class="res-row"><span class="pill" style="background:#9aa0a8">Sin estándar</span><span>Ese producto aún no tiene mínimo definido.</span></div>
     </div>
   </div>
 
@@ -499,7 +500,7 @@
       <div class="res-row"><span><b>📒 Consolidado</b></span><span>Todo lo guardado, con filtros y totales.</span></div>
       <div class="res-row"><span><b>📏 Estándares</b></span><span>Pérdida aceptable por producto.</span></div>
       <div class="res-row"><span><b>🧩 Matriz cortes</b></span><span>Catálogo de cortes y sus pesos.</span></div>
-      <div class="res-row"><span><b>📊 Panel</b></span><span>Indicadores y productos más críticos.</span></div>
+      <div class="res-row"><span><b>📊 Panel</b></span><span>Indicadores de este equipo o de todo el grupo.</span></div>
       <div class="res-row"><span><b>⚙️ Configuración</b></span><span>Personal, proveedores y restaurantes.</span></div>
       <div class="res-row"><span><b>📤 Exportar</b></span><span>PDF, Excel y envío por correo.</span></div>
     </div>
@@ -508,9 +509,13 @@
   <div class="card">
     <h2>💾 Dónde quedan los datos</h2>
     <div class="aviso">
-      Los análisis se guardan <b>en este equipo y en este navegador</b>. No se comparten entre computadores ni entre restaurantes, y se pierden si borras los datos de navegación.
+      Cada análisis queda en <b>dos sitios</b>: en <b>este navegador</b> y en el <b>Drive del grupo</b>, a donde se envía solo al guardar. Si no hay internet, queda en cola y sale cuando vuelva la conexión; en <b>Consolidado</b> se ve si falta algo por enviar.
       <br><br>
-      Por eso, al cerrar cada período <b>descarga el Excel</b> desde la pestaña Exportar y guárdalo en la carpeta del grupo. Ese archivo es el respaldo.
+      Borrar un análisis aquí no lo borra del Drive: allá queda marcado como <b>anulado</b> y no se cuenta.
+      <br><br>
+      Lo de todos los restaurantes se consulta en <b>Panel → Todo el grupo</b>, o en el libro del Drive desde el correo del grupo.
+      <br><br>
+      <b>Abre siempre el aplicativo desde el mismo enlace.</b> Lo guardado en el navegador depende del enlace: si entras por otro, lo verás vacío.
     </div>
   </div>
 </div>
@@ -959,7 +964,7 @@ function recalc(){
   $('r_rend').textContent=rend.toFixed(1)+'%';
   $('r_pperd').textContent=pperd.toFixed(1)+'%';
   const st=stdDe($('a_prot').value);
-  let est='<span class="pill v">Sin estándar</span>';
+  let est='<span class="pill" style="background:#9aa0a8">Sin estándar</span>';
   if(st){
     const s=rend>=st.rendMin?'v':(rend>=st.rendMin-3?'a':'r');
     const txt=s==='v'?`✅ OK (mín ${st.rendMin}%)`:s==='a'?`⚠️ Al límite (mín ${st.rendMin}%)`:`❌ Bajo estándar (mín ${st.rendMin}%)`;
